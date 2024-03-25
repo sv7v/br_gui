@@ -32,3 +32,95 @@ class BG_LocalFile:
 			reader.readAsText(file)
 			reader.bind('load', onload)
 #class BG_LocalFile:
+
+class BG_CanvasBase:
+	pass
+
+class BG_SVG(BG_CanvasBase):
+	def __init__(self, g_id):
+		self._svg_g = document[g_id]
+		self.x_size = int(self._svg_g.parent['width'])
+		self.y_size = int(self._svg_g.parent['height'])
+
+	def line(self, x0, y0, x1, y1):
+		def X(x): return str(round(x*self.x_size))
+		def Y(y): return str(round(self.y_size*(1-y)))
+
+		self._svg_g <= svg.line(x1=X(x0),
+		                        y1=Y(y0),
+		                        x2=X(x1),
+		                        y2=Y(y1),
+		                        stroke_width="1",
+		                        stroke="brown")
+
+class BG_Item:
+	def percent(mi, x, ma): return 0.1 + 0.8*(x-mi)/(ma-mi)
+
+class BG_TableFunc(BG_Item):
+	def __init__(self, xy):
+		self._data = tuple(xy)
+
+		x = tuple(map(lambda i: i[0],
+		              self._data))
+		y = tuple(map(lambda i: i[1],
+		              self._data))
+
+		self._x_min = min(x)
+		self._x_max = max(x)
+		self._y_min = min(y)
+		self._y_max = max(y)
+
+	def draw(self, canvas, x_min, y_min, x_max, y_max):
+		for (x0,y0),(x1,y1) in pair(self._data):
+			canvas.line(BG_Item.percent(x_min, x0, x_max),
+			            BG_Item.percent(y_min, y0, y_max),
+			            BG_Item.percent(x_min, x1, x_max),
+			            BG_Item.percent(y_min, y1, y_max))
+
+	def getSize(self):
+		return (self._x_min,
+		        self._y_min,
+		        self._x_max,
+		        self._y_max)
+#class BG_TableFunc(BG_Item):
+
+class BG_Decart:
+	def flatten(*x):
+		'''flatten nested list/tuple'''
+		for i in x:
+			try:
+				for j in BG_Decart.flatten(*i):
+					yield j
+			except TypeError:
+				yield i
+
+	def __min_max(self, x_min, y_min, x_max, y_max):
+		if not (self._x_min != None and self._x_min < x_min): self._x_min = x_min
+		if not (self._y_min != None and self._y_min < y_min): self._y_min = y_min
+
+		if not (self._x_max != None and x_max < self._x_max): self._x_max = x_max
+		if not (self._y_max != None and y_max < self._y_max): self._y_max = y_max
+
+	def __init__(self, canvas, *args):
+		self._canvas = canvas
+
+		self._data = args
+
+		self._x_min = None
+		self._y_min = None
+		self._x_max = None
+		self._y_max = None
+
+	def draw(self, *args):
+		a = tuple(BG_Decart.flatten(self._data, args))
+
+		for i in a:
+			b = i.getSize()
+			self.__min_max(*b)
+
+		for i in a:
+			i.draw(self._canvas, self._x_min,
+			                     self._y_min,
+			                     self._x_max,
+			                     self._y_max)
+#class BG_Decart:
