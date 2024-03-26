@@ -3,6 +3,7 @@ Project 'Browser GUI for Brython' (BG)
 '''
 from browser    import *
 from pair_iterator  import *
+from browser        import svg
 
 class BG_Table:
 	def __init__(self, x):
