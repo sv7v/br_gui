@@ -5,6 +5,9 @@ from browser    import *
 from pair_iterator  import *
 from browser        import svg
 
+from math           import *
+from itertools      import *
+
 class BG_Table:
 	def __init__(self, x):
 		self._table = html.TABLE()
@@ -79,6 +82,7 @@ class BG_SVG(BG_CanvasBase):
 		                        stroke="brown")
 
 class BG_Item:
+	# Координаты математики
 #	def __init__(self, ...):
 #	def draw(self, canvas, x_min, y_min, x_max, y_max):
 #		'''Минимальные и максимальные координаты
@@ -86,7 +90,55 @@ class BG_Item:
 #	def getSize(self):
 #		'''Минимальные и максимальные координаты для этого объекта'''
 
-	def percent(mi, x, ma): return 0.1 + 0.8*(x-mi)/(ma-mi)
+	def getFrame(): return 0.1, 0.1, 0.9, 0.9
+
+	def dashes(mi, ma):
+		a = (ma - mi)/10
+		b = log(a, 10)
+		c = floor(b)
+		d = c + log(5,10)
+		if d < b:
+			# e = d
+			f = 5 * 10**c  # f = 10**e
+		else:
+			e = c
+			f = 10**c      # f = 10**e
+
+		g = ceil(mi / f)
+		h = tuple(takewhile(lambda j: j[0]<ma,
+		                    map(lambda i:(f*i,i),
+		                        count(g))))[-1][1]
+		return f, range(g, h+1)
+
+	def _percent(mi, x, ma, p0, p1):
+		return p0 + (p1-p0)*(x-mi)/(ma-mi)
+
+	def percent_x(mi, x, ma): x0, y0, x1, y1 = BG_Item.getFrame(); return BG_Item._percent(mi, x, ma, x0, x1)
+	def percent_y(mi, y, ma): x0, y0, x1, y1 = BG_Item.getFrame(); return BG_Item._percent(mi, y, ma, y0, x1)
+#class BG_Item:
+
+class BG_Frame(BG_Item):
+	def draw(self, canvas, x_min, y_min, x_max, y_max):
+		x0, y0, x1, y1 = BG_Item.getFrame()
+		canvas.line(x0, y0, x0, y1)
+		canvas.line(x0, y1, x1, y1)
+		canvas.line(x1, y1, x1, y0)
+		canvas.line(x1, y0, x0, y0)
+
+		step, r = BG_Frame.dashes(x_min, x_max)
+		for i in r:
+			x = BG_Item.percent_x(x_min, step*i, x_max)
+			canvas.line(x, y1, x, y1+0.02)          # верхняя
+			canvas.line(x, y0, x, y0-0.02)          # нижняя
+
+		step, r = BG_Frame.dashes(y_min, y_max)
+		for i in r:
+			y = BG_Item.percent_y(y_min, step*i, y_max)
+			canvas.line(x0-0.02, y, x0,      y)     # левая
+			canvas.line(x1     , y, x1+0.02, y)     # правая
+
+	def getSize(self):
+		return None, None, None, None
 
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
@@ -107,10 +159,10 @@ class BG_TableFunc(BG_Item):
 		'''Минимальные и максимальные координаты
 		соответствующие 'рамке' графика.'''
 		for (x0,y0),(x1,y1) in pair(self._data):
-			canvas.line(BG_Item.percent(x_min, x0, x_max),
-			            BG_Item.percent(y_min, y0, y_max),
-			            BG_Item.percent(x_min, x1, x_max),
-			            BG_Item.percent(y_min, y1, y_max))
+			canvas.line(BG_Item.percent_x(x_min, x0, x_max),
+			            BG_Item.percent_y(y_min, y0, y_max),
+			            BG_Item.percent_x(x_min, x1, x_max),
+			            BG_Item.percent_y(y_min, y1, y_max))
 
 	def getSize(self):
 		'''Минимальные и максимальные координаты для этого объекта'''
@@ -131,11 +183,11 @@ class BG_Decart:
 				yield i
 
 	def __min_max(self, x_min, y_min, x_max, y_max):
-		if not (self._x_min != None and self._x_min < x_min): self._x_min = x_min
-		if not (self._y_min != None and self._y_min < y_min): self._y_min = y_min
+		if self._x_min == None or x_min != None and x_min < self._x_min        : self._x_min = x_min
+		if self._x_max == None or x_max != None and         self._x_max < x_max: self._x_max = x_max
 
-		if not (self._x_max != None and x_max < self._x_max): self._x_max = x_max
-		if not (self._y_max != None and y_max < self._y_max): self._y_max = y_max
+		if self._y_min == None or y_min != None and y_min < self._y_min        : self._y_min = y_min
+		if self._y_max == None or y_max != None and         self._y_max < y_max: self._y_max = y_max
 
 	def __init__(self, canvas, *args):
 		self._canvas = canvas
