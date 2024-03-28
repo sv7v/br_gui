@@ -37,6 +37,9 @@ class BG_LocalFile:
 
 class BG_CanvasBase:
 	pass
+#	def line(self, x0, y0, x1, y1):
+#		'''Координаты в долях. (0;0) -- левый нижний угол 'холста'.
+#		(1;1) -- правый верхний угол 'холста'.'''
 
 class BG_SVG(BG_CanvasBase):
 	def __init__(self, g_id):
@@ -45,6 +48,8 @@ class BG_SVG(BG_CanvasBase):
 		self.y_size = int(self._svg_g.parent['height'])
 
 	def line(self, x0, y0, x1, y1):
+		'''Координаты в долях. (0;0) -- левый нижний угол 'холста'.
+		(1;1) -- правый верхний угол 'холста'.'''
 		def X(x): return str(round(x*self.x_size))
 		def Y(y): return str(round(self.y_size*(1-y)))
 
@@ -56,10 +61,18 @@ class BG_SVG(BG_CanvasBase):
 		                        stroke="brown")
 
 class BG_Item:
+#	def __init__(self, ...):
+#	def draw(self, canvas, x_min, y_min, x_max, y_max):
+#		'''Минимальные и максимальные координаты
+#		соответствующие 'рамке' графика.'''
+#	def getSize(self):
+#		'''Минимальные и максимальные координаты для этого объекта'''
+
 	def percent(mi, x, ma): return 0.1 + 0.8*(x-mi)/(ma-mi)
 
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
+		'''Координаты математики'''
 		self._data = tuple(xy)
 
 		x = tuple(map(lambda i: i[0],
@@ -73,6 +86,8 @@ class BG_TableFunc(BG_Item):
 		self._y_max = max(y)
 
 	def draw(self, canvas, x_min, y_min, x_max, y_max):
+		'''Минимальные и максимальные координаты
+		соответствующие 'рамке' графика.'''
 		for (x0,y0),(x1,y1) in pair(self._data):
 			canvas.line(BG_Item.percent(x_min, x0, x_max),
 			            BG_Item.percent(y_min, y0, y_max),
@@ -80,6 +95,7 @@ class BG_TableFunc(BG_Item):
 			            BG_Item.percent(y_min, y1, y_max))
 
 	def getSize(self):
+		'''Минимальные и максимальные координаты для этого объекта'''
 		return (self._x_min,
 		        self._y_min,
 		        self._x_max,
