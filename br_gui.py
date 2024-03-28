@@ -41,6 +41,24 @@ class BG_CanvasBase:
 #		'''Координаты в долях. (0;0) -- левый нижний угол 'холста'.
 #		(1;1) -- правый верхний угол 'холста'.'''
 
+class BG_HtmlCanvas(BG_CanvasBase):
+	def __init__(self, canvas_id):
+		c = self.__context = document[canvas_id].getContext('2d')
+
+		self.x_size = c.canvas.width
+		self.y_size = c.canvas.height
+
+	def line(self, x0, y0, x1, y1):
+		def X(x): return round(x*self.x_size)
+		def Y(y): return round(self.y_size*(1-y))
+
+		c = self.__context
+
+		c.beginPath()
+		c.moveTo(X(x0), Y(y0))
+		c.lineTo(X(x1), Y(y1))
+		c.stroke()
+
 class BG_SVG(BG_CanvasBase):
 	def __init__(self, g_id):
 		self._svg_g = document[g_id]
