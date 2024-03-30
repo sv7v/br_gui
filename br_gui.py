@@ -40,9 +40,14 @@ class BG_LocalFile:
 
 class BG_CanvasBase:
 	pass
+	LEFT   = 0x1
+	BOTTOM = 0x1 << 1
+	RIGHT  = 0x1 << 2
+	TOP    = 0x1 << 3
 #	def line(self, x0, y0, x1, y1):
 #		'''Координаты в долях. (0;0) -- левый нижний угол 'холста'.
 #		(1;1) -- правый верхний угол 'холста'.'''
+#	def text(self, x, y, align, text)
 
 class BG_HtmlCanvas(BG_CanvasBase):
 	def __init__(self, canvas_id):
@@ -51,16 +56,27 @@ class BG_HtmlCanvas(BG_CanvasBase):
 		self.x_size = c.canvas.width
 		self.y_size = c.canvas.height
 
-	def line(self, x0, y0, x1, y1):
-		def X(x): return round(x*self.x_size)
-		def Y(y): return round(self.y_size*(1-y))
+	def X(self, x): return round(x*self.x_size)
+	def Y(self, y): return round(self.y_size*(1-y))
 
+	def line(self, x0, y0, x1, y1):
 		c = self.__context
 
 		c.beginPath()
-		c.moveTo(X(x0), Y(y0))
-		c.lineTo(X(x1), Y(y1))
+		c.moveTo(self.X(x0), self.Y(y0))
+		c.lineTo(self.X(x1), self.Y(y1))
 		c.stroke()
+
+	def text(self, x, y, align, text):
+		if   align == self.LEFT  : self.__context.textAlign = 'left';   self.__context.textBaseline = 'middle'
+		elif align == self.BOTTOM: self.__context.textAlign = 'center'; self.__context.textBaseline = 'bottom'
+		elif align == self.RIGHT : self.__context.textAlign = 'right';  self.__context.textBaseline = 'middle'
+		elif align == self.TOP   : self.__context.textAlign = 'center'; self.__context.textBaseline = 'top'
+		else:
+			raise Exception()
+		self.__context.fillStyle = '#000'
+		self.__context.fillText(str(text), self.X(x), self.Y(y))
+#class BG_HtmlCanvas(BG_CanvasBase):
 
 class BG_SVG(BG_CanvasBase):
 	def __init__(self, g_id):
@@ -130,15 +146,21 @@ class BG_Frame(BG_Item):
 			x = BG_Item.percent_x(x_min, step*i, x_max)
 			canvas.line(x, y1, x, y1+0.02)          # верхняя
 			canvas.line(x, y0, x, y0-0.02)          # нижняя
+			if i%5 == 0:
+				canvas.text(x, y1+0.02, BG_CanvasBase.BOTTOM,  step*i)
+				canvas.text(x, y0-0.02, BG_CanvasBase.TOP,     step*i)
 
 		step, r = BG_Frame.dashes(y_min, y_max)
 		for i in r:
 			y = BG_Item.percent_y(y_min, step*i, y_max)
 			canvas.line(x0-0.02, y, x0,      y)     # левая
 			canvas.line(x1     , y, x1+0.02, y)     # правая
+			canvas.text(x1+0.02, y, BG_CanvasBase.LEFT,  step*i)
+			canvas.text(x0-0.02, y, BG_CanvasBase.RIGHT, step*i)
 
 	def getSize(self):
 		return None, None, None, None
+#class BG_Frame(BG_Item):
 
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
