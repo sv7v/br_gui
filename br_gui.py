@@ -184,6 +184,14 @@ class BG_TableFunc(BG_Item):
 		'''Координаты математики'''
 		self._data = tuple(xy)
 
+		if len(self._data) == 0:
+			self._x_min = None
+			self._x_max = None
+			self._y_min = None
+			self._y_max = None
+
+			return
+
 		x = tuple(map(lambda i: i[0],
 		              self._data))
 		y = tuple(map(lambda i: i[1],
@@ -242,13 +250,13 @@ class BG_Decart:
 		self._canvas.clear()
 
 	def draw(self, *args):
-		a = tuple(BG_Decart.flatten(self._data, args))
+		a = tuple(BG_Decart.flatten(args))
 
 		for i in a:
 			b = i.getSize()
 			self.__min_max(*b)
 
-		for i in a:
+		for i in BG_Decart.flatten(self._data, a):
 			i.draw(self._canvas, self._x_min,
 			                     self._y_min,
 			                     self._x_max,
@@ -256,5 +264,11 @@ class BG_Decart:
 
 	def redraw(self, *args):
 		self.clear()
+
+		self._x_min = None
+		self._y_min = None
+		self._x_max = None
+		self._y_max = None
+
 		self.draw(*args)
 #class BG_Decart:
