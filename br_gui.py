@@ -21,23 +21,25 @@ class BG_Table:
 		return self._table
 #class BG_Table:
 
-class BG_LocalFile:
-	def __init__(self, inputId, func):
-		btn = document[inputId]
+class BG_LocalTextFile:
+	def __init__(self, callback):
+		self._data = html.INPUT(type='file')
 
-		@bind(btn, 'input')
-		def file_read(ev):
-			def onload(event):
-				func(event.target.result)
+		def input(event):
+			def load(event):
+				callback(event.target.result)
 
-			# Get the selected file as a DOM File object
-			file = btn.files[0]
-			# Create a new DOM FileReader instance
+			file = self._data.files[0]
+
 			reader = window.FileReader.new()
-			# Read the file content as text
 			reader.readAsText(file)
-			reader.bind('load', onload)
-#class BG_LocalFile:
+			reader.bind('load', load)
+
+		self._data.bind('input', input)
+
+	def get(self):
+		return self._data
+#class BG_LocalTextFile:
 
 class BG_CheckBox:
 	def __init__(self, hook, title=''):
