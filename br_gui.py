@@ -7,6 +7,7 @@ from browser        import svg
 
 from math           import *
 from itertools      import *
+from uuid           import uuid4
 
 class BG_Table:
 	def __init__(self, x):
@@ -38,12 +39,23 @@ class BG_LocalFile:
 			reader.bind('load', onload)
 #class BG_LocalFile:
 
+class BG_CheckBox:
+	def __init__(self, hook, title=''):
+		self._id  = str(uuid4())
+		self._data = html.INPUT(type='checkbox', onchange=hook, title=str(title), id=self._id)
+	def get(self):
+		return self._data
+	def getState(self):
+		return document[self._id].checked
+	def set(self, state=True):
+		document[self._id].checked = state
+
 class BG_CanvasBase:
-	pass
 	LEFT   = 0x1
 	BOTTOM = 0x1 << 1
 	RIGHT  = 0x1 << 2
 	TOP    = 0x1 << 3
+#	def clear(self):
 #	def line(self, x0, y0, x1, y1):
 #		'''Координаты в долях. (0;0) -- левый нижний угол 'холста'.
 #		(1;1) -- правый верхний угол 'холста'.'''
@@ -55,6 +67,9 @@ class BG_HtmlCanvas(BG_CanvasBase):
 
 		self.x_size = c.canvas.width
 		self.y_size = c.canvas.height
+
+	def clear(self):
+		self.__context.clearRect(0, 0, self.x_size, self.y_size)
 
 	def X(self, x): return round(x*self.x_size)
 	def Y(self, y): return round(self.y_size*(1-y))
@@ -109,6 +124,8 @@ class BG_Item:
 	def getFrame(): return 0.1, 0.1, 0.9, 0.9
 
 	def dashes(mi, ma):
+		if mi == None or ma == None:
+			return None, ()
 		a = (ma - mi)/10
 		b = log(a, 10)
 		c = floor(b)
@@ -221,6 +238,9 @@ class BG_Decart:
 		self._x_max = None
 		self._y_max = None
 
+	def clear(self):
+		self._canvas.clear()
+
 	def draw(self, *args):
 		a = tuple(BG_Decart.flatten(self._data, args))
 
@@ -233,4 +253,8 @@ class BG_Decart:
 			                     self._y_min,
 			                     self._x_max,
 			                     self._y_max)
+
+	def redraw(self, *args):
+		self.clear()
+		self.draw(*args)
 #class BG_Decart:
