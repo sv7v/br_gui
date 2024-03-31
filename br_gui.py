@@ -64,17 +64,21 @@ class BG_CanvasBase:
 #	def text(self, x, y, align, text)
 
 class BG_HtmlCanvas(BG_CanvasBase):
-	def __init__(self, canvas_id):
-		c = self.__context = document[canvas_id].getContext('2d')
+	def __init__(self, size_x, size_y):
+		self.__canvas  = html.CANVAS(width=size_x, height=size_y)
+		self.__context = self.__canvas.getContext('2d')
 
-		self.x_size = c.canvas.width
-		self.y_size = c.canvas.height
+		self.size_x = size_x
+		self.size_y = size_y
+
+	def get(self):
+		return self.__canvas
 
 	def clear(self):
-		self.__context.clearRect(0, 0, self.x_size, self.y_size)
+		self.__context.clearRect(0, 0, self.size_x, self.size_y)
 
-	def X(self, x): return round(x*self.x_size)
-	def Y(self, y): return round(self.y_size*(1-y))
+	def X(self, x): return round(x*self.size_x)
+	def Y(self, y): return round(self.size_y*(1-y))
 
 	def line(self, x0, y0, x1, y1):
 		c = self.__context
