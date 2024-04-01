@@ -275,6 +275,21 @@ class BG_Frame(BG_Item):
 		return None, None, None, None
 #class BG_Frame(BG_Item):
 
+class BG_Grid(BG_Item):
+	def draw(self, canvas, x_min, y_min, x_max, y_max):
+		for x in BG_Frame.dashes(x_min, x_max):
+			a = BG_Item.point(x, y_min)
+			b = BG_Item.point(x, y_max)
+			canvas.line(a, b)
+
+		for y in BG_Item.dashes_y(y_min, y_max):
+			a = BG_Item.point(x_min, y)
+			b = BG_Item.point(x_max, y)
+			canvas.line(a, b)
+
+	def getSize(self):
+		return None, None, None, None
+
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
 		'''Координаты математики'''
