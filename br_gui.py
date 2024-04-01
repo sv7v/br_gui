@@ -227,6 +227,22 @@ class BG_Item:
 				raise Exception()
 #class BG_Item:
 
+class BG_Space(BG_Item):
+	def __init__(self, x_min, y_min, x_max, y_max):
+		self._x_min = x_min
+		self._y_min = y_min
+		self._x_max = x_max
+		self._y_max = y_max
+
+	def draw(self, canvas, x_min, y_min, x_max, y_max):
+		pass
+
+	def getSize(self):
+		return (self._x_min,
+		        self._y_min,
+		        self._x_max,
+		        self._y_max)
+
 class BG_Frame(BG_Item):
 	def draw(self, canvas, x_min, y_min, x_max, y_max):
 		canvas.line(BG_Item.point(x_min, y_min), BG_Item.point(x_min, y_max))
