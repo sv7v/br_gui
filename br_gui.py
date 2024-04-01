@@ -275,6 +275,10 @@ class BG_Decart:
 	def clear(self):
 		self._canvas.clear()
 
+	def setProp(self, prop):
+		self._prop = prop
+		BG_Item.setProp(self._prop)
+
 	def draw(self, *args):
 		a = tuple(flatten(args))
 		BG_Item.setProp(self._prop)
