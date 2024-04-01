@@ -290,6 +290,18 @@ class BG_Grid(BG_Item):
 	def getSize(self):
 		return None, None, None, None
 
+class BG_BubbleLevel(BG_Item):
+	def __init__(self, n):
+		self._n = n
+
+	def draw(self, canvas, x_min, y_min, x_max, y_max):
+		for i in range(self._n):
+			y = (1/self._n)*(i+0.5)
+			canvas.line((0, y), (1, y))
+
+	def getSize(self):
+		return None, None, None, None
+
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
 		'''Координаты математики'''
