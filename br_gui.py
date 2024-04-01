@@ -65,6 +65,12 @@ class BG_Property:          pass
 
 class BG_LogY(BG_Property): pass
 
+class BG_Affinis(BG_Property):
+	def __init__(self, tg=0):
+		self._tg = tg
+	def tg(self):
+		return self._tg
+
 class BG_CanvasBase:
 	LEFT   = 0x1
 	BOTTOM = 0x1 << 1
@@ -93,15 +99,15 @@ class BG_HtmlCanvas(BG_CanvasBase):
 	def X(self, x): return round(x*self.size_x)
 	def Y(self, y): return round(self.size_y*(1-y))
 
-	def line(self, x0, y0, x1, y1):
+	def line(self, a, b):
 		c = self.__context
 
 		c.beginPath()
-		c.moveTo(self.X(x0), self.Y(y0))
-		c.lineTo(self.X(x1), self.Y(y1))
+		c.moveTo(self.X(a[0]), self.Y(a[1]))
+		c.lineTo(self.X(b[0]), self.Y(b[1]))
 		c.stroke()
 
-	def text(self, x, y, align, text):
+	def text(self, a, align, text):
 		if   align == self.LEFT  : self.__context.textAlign = 'left';   self.__context.textBaseline = 'middle'
 		elif align == self.BOTTOM: self.__context.textAlign = 'center'; self.__context.textBaseline = 'bottom'
 		elif align == self.RIGHT : self.__context.textAlign = 'right';  self.__context.textBaseline = 'middle'
@@ -109,7 +115,7 @@ class BG_HtmlCanvas(BG_CanvasBase):
 		else:
 			raise Exception()
 		self.__context.fillStyle = '#000'
-		self.__context.fillText(str(text), self.X(x), self.Y(y))
+		self.__context.fillText(str(text), self.X(a[0]), self.Y(a[1]))
 #class BG_HtmlCanvas(BG_CanvasBase):
 
 class BG_SVG(BG_CanvasBase):
@@ -140,7 +146,12 @@ class BG_Item:
 #	def getSize(self):
 #		'''Минимальные и максимальные координаты для этого объекта'''
 
-	def getFrame(): return 0.1, 0.1, 0.9, 0.9
+	def base(x_min, y_min, x_max, y_max):
+		BG_Item._x_min = x_min
+		BG_Item._y_min = y_min
+
+		BG_Item._x_max = x_max
+		BG_Item._y_max = y_max
 
 	def dashes(mi, ma):
 		if mi == None or ma == None:
@@ -167,47 +178,82 @@ class BG_Item:
 		b = ceil(log(ma, 10))
 		return map(lambda i: 10**i, range(a, b))
 
-	def _percent    (mi, x, ma, p0, p1): return p0 + (p1-p0)*(x-mi)/(ma-mi)
-	def _percent_log(mi, y, ma, p0, p1): return p0 + (p1-p0)*log(y/mi)/log(ma/mi)
+	def _linear(mi, x, ma): return (x-mi)/(ma-mi)
+	def _log(mi, y, ma):    return log(y/mi)/log(ma/mi)
 
-	def percent_x(mi, x, ma):      x0, y0, x1, y1 = BG_Item.getFrame(); return BG_Item._percent    (mi, x, ma, x0, x1)
-	def _percent_y(mi, y, ma):     x0, y0, x1, y1 = BG_Item.getFrame(); return BG_Item._percent    (mi, y, ma, y0, x1)
+	def _affinis(x, y, tg):
+		if    0   <= tg <= 0.5:
+			# x = x
+			y = y*(1-tg)+x*tg
+		elif -0.5 <= tg <  0:
+			# x = x
+			y = y*(1+tg)-tg+x*tg
+		else:
+			raise Exception()
+		return x, y
 
-	def _percent_log_y(mi, y, ma): x0, y0, x1, y1 = BG_Item.getFrame(); return BG_Item._percent_log(mi, y, ma, y0, y1)
+	def _compress(x, y):
+		x_min, y_min, x_max, y_max = 0.1, 0.1, 0.9, 0.9
+
+		x = x_min + x*(x_max-x_min)
+		y = y_min + y*(y_max-y_min)
+
+		return x, y
+
+	def point(x, y):
+		x = BG_Item._linear(BG_Item._x_min, x, BG_Item._x_max)
+		if BG_Item._logY == False:
+			y = BG_Item._linear(BG_Item._y_min, y, BG_Item._y_max)
+		else:
+			y = BG_Item._log   (BG_Item._y_min, y, BG_Item._y_max)
+
+		if BG_Item._affinisTg != None:
+			x, y = BG_Item._affinis(x, y, BG_Item._affinisTg.tg())
+
+		return BG_Item._compress(x, y)
 
 	def setProp(prop):
-		BG_Item.percent_y = BG_Item._percent_y
-		BG_Item.dashes_y  = BG_Item.dashes
+		BG_Item._logY = False
+		BG_Item._affinisTg = None
+		BG_Item.dashes_y = BG_Item.dashes
+
 		for i in flatten(prop):
 			if   isinstance(i, BG_LogY):
-				BG_Item.percent_y = BG_Item._percent_log_y
-				BG_Item.dashes_y  = BG_Item._dashes_log
+				BG_Item._logY      = True
+				BG_Item.dashes_y   = BG_Item._dashes_log
+			elif isinstance(i, BG_Affinis):
+				BG_Item._affinisTg = i
 			else:
 				raise Exception()
 #class BG_Item:
 
 class BG_Frame(BG_Item):
 	def draw(self, canvas, x_min, y_min, x_max, y_max):
-		x0, y0, x1, y1 = BG_Item.getFrame()
-		canvas.line(x0, y0, x0, y1)
-		canvas.line(x0, y1, x1, y1)
-		canvas.line(x1, y1, x1, y0)
-		canvas.line(x1, y0, x0, y0)
+		canvas.line(BG_Item.point(x_min, y_min), BG_Item.point(x_min, y_max))
+		canvas.line(BG_Item.point(x_min, y_max), BG_Item.point(x_max, y_max))
+		canvas.line(BG_Item.point(x_max, y_max), BG_Item.point(x_max, y_min))
+		canvas.line(BG_Item.point(x_max, y_min), BG_Item.point(x_min, y_min))
 
-		for i in BG_Frame.dashes(x_min, x_max):
-			x = BG_Item.percent_x(x_min, i, x_max)
-			canvas.line(x, y1, x, y1+0.02)          # верхняя
-			canvas.line(x, y0, x, y0-0.02)          # нижняя
-			if i%5 == 0:
-				canvas.text(x, y1+0.02, BG_CanvasBase.BOTTOM,  i)
-				canvas.text(x, y0-0.02, BG_CanvasBase.TOP,     i)
+		for x in BG_Frame.dashes(x_min, x_max):
+			a = BG_Item.point(x, y_max)
+			b = (a[0], a[1]+0.02)
+			c = BG_Item.point(x, y_min)
+			d = (c[0], c[1]-0.02)
+			canvas.line(a, b)          # верхняя
+			canvas.line(c, d)          # нижняя
+			if x%5 == 0:
+				canvas.text(b, BG_CanvasBase.BOTTOM,  x)
+				canvas.text(d, BG_CanvasBase.TOP,     x)
 
-		for i in BG_Item.dashes_y(y_min, y_max):
-			y = BG_Item.percent_y(y_min, i, y_max)
-			canvas.line(x0-0.02, y, x0,      y)     # левая
-			canvas.line(x1     , y, x1+0.02, y)     # правая
-			canvas.text(x1+0.02, y, BG_CanvasBase.LEFT,  i)
-			canvas.text(x0-0.02, y, BG_CanvasBase.RIGHT, i)
+		for y in BG_Item.dashes_y(y_min, y_max):
+			a = BG_Item.point(x_min, y)
+			b = (a[0]-0.02, a[1])
+			c = BG_Item.point(x_max, y)
+			d = (c[0]+0.02, c[1])
+			canvas.line(a, b)     # левая
+			canvas.line(c, d)     # правая
+			canvas.text(b, BG_CanvasBase.RIGHT, y)
+			canvas.text(d, BG_CanvasBase.LEFT,  y)
 
 	def getSize(self):
 		return None, None, None, None
@@ -240,11 +286,9 @@ class BG_TableFunc(BG_Item):
 		'''Минимальные и максимальные координаты
 		соответствующие 'рамке' графика.'''
 		for (x0,y0),(x1,y1) in pair(self._data):
-			canvas.line(BG_Item.percent_x(x_min, x0, x_max),
-			            BG_Item.percent_y(y_min, y0, y_max),
-			            BG_Item.percent_x(x_min, x1, x_max),
-			            BG_Item.percent_y(y_min, y1, y_max))
-
+			BG_Item.base(x_min, y_min, x_max, y_max)
+			canvas.line(BG_Item.point(x0, y0),
+			            BG_Item.point(x1, y1))
 	def getSize(self):
 		'''Минимальные и максимальные координаты для этого объекта'''
 		return (self._x_min,
@@ -286,6 +330,8 @@ class BG_Decart:
 		for i in a:
 			b = i.getSize()
 			self.__min_max(*b)
+
+		BG_Item.base(self._x_min, self._y_min, self._x_max, self._y_max)
 
 		for i in flatten(self._data, a):
 			i.draw(self._canvas, self._x_min,
