@@ -9,6 +9,15 @@ from math           import *
 from itertools      import *
 from uuid           import uuid4
 
+def flatten(*x):
+	'''flatten nested list/tuple'''
+	for i in x:
+		try:
+			for j in flatten(*i):
+				yield j
+		except TypeError:
+			yield i
+
 class BG_Table:
 	def __init__(self, x):
 		self._table = html.TABLE()
@@ -51,6 +60,10 @@ class BG_CheckBox:
 		return document[self._id].checked
 	def set(self, state=True):
 		document[self._id].checked = state
+
+class BG_Property:          pass
+
+class BG_LogY(BG_Property): pass
 
 class BG_CanvasBase:
 	LEFT   = 0x1
@@ -147,13 +160,30 @@ class BG_Item:
 		h = tuple(takewhile(lambda j: j[0]<ma,
 		                    map(lambda i:(f*i,i),
 		                        count(g))))[-1][1]
-		return f, range(g, h+1)
+		return map(lambda i: f*i, range(g, h+1))
 
-	def _percent(mi, x, ma, p0, p1):
-		return p0 + (p1-p0)*(x-mi)/(ma-mi)
+	def _dashes_log(mi, ma):
+		a = ceil(log(mi, 10))
+		b = ceil(log(ma, 10))
+		return map(lambda i: 10**i, range(a, b))
 
-	def percent_x(mi, x, ma): x0, y0, x1, y1 = BG_Item.getFrame(); return BG_Item._percent(mi, x, ma, x0, x1)
-	def percent_y(mi, y, ma): x0, y0, x1, y1 = BG_Item.getFrame(); return BG_Item._percent(mi, y, ma, y0, x1)
+	def _percent    (mi, x, ma, p0, p1): return p0 + (p1-p0)*(x-mi)/(ma-mi)
+	def _percent_log(mi, y, ma, p0, p1): return p0 + (p1-p0)*log(y/mi)/log(ma/mi)
+
+	def percent_x(mi, x, ma):      x0, y0, x1, y1 = BG_Item.getFrame(); return BG_Item._percent    (mi, x, ma, x0, x1)
+	def _percent_y(mi, y, ma):     x0, y0, x1, y1 = BG_Item.getFrame(); return BG_Item._percent    (mi, y, ma, y0, x1)
+
+	def _percent_log_y(mi, y, ma): x0, y0, x1, y1 = BG_Item.getFrame(); return BG_Item._percent_log(mi, y, ma, y0, y1)
+
+	def setProp(prop):
+		BG_Item.percent_y = BG_Item._percent_y
+		BG_Item.dashes_y  = BG_Item.dashes
+		for i in flatten(prop):
+			if   isinstance(i, BG_LogY):
+				BG_Item.percent_y = BG_Item._percent_log_y
+				BG_Item.dashes_y  = BG_Item._dashes_log
+			else:
+				raise Exception()
 #class BG_Item:
 
 class BG_Frame(BG_Item):
@@ -164,22 +194,20 @@ class BG_Frame(BG_Item):
 		canvas.line(x1, y1, x1, y0)
 		canvas.line(x1, y0, x0, y0)
 
-		step, r = BG_Frame.dashes(x_min, x_max)
-		for i in r:
-			x = BG_Item.percent_x(x_min, step*i, x_max)
+		for i in BG_Frame.dashes(x_min, x_max):
+			x = BG_Item.percent_x(x_min, i, x_max)
 			canvas.line(x, y1, x, y1+0.02)          # верхняя
 			canvas.line(x, y0, x, y0-0.02)          # нижняя
 			if i%5 == 0:
-				canvas.text(x, y1+0.02, BG_CanvasBase.BOTTOM,  step*i)
-				canvas.text(x, y0-0.02, BG_CanvasBase.TOP,     step*i)
+				canvas.text(x, y1+0.02, BG_CanvasBase.BOTTOM,  i)
+				canvas.text(x, y0-0.02, BG_CanvasBase.TOP,     i)
 
-		step, r = BG_Frame.dashes(y_min, y_max)
-		for i in r:
-			y = BG_Item.percent_y(y_min, step*i, y_max)
+		for i in BG_Item.dashes_y(y_min, y_max):
+			y = BG_Item.percent_y(y_min, i, y_max)
 			canvas.line(x0-0.02, y, x0,      y)     # левая
 			canvas.line(x1     , y, x1+0.02, y)     # правая
-			canvas.text(x1+0.02, y, BG_CanvasBase.LEFT,  step*i)
-			canvas.text(x0-0.02, y, BG_CanvasBase.RIGHT, step*i)
+			canvas.text(x1+0.02, y, BG_CanvasBase.LEFT,  i)
+			canvas.text(x0-0.02, y, BG_CanvasBase.RIGHT, i)
 
 	def getSize(self):
 		return None, None, None, None
@@ -226,15 +254,6 @@ class BG_TableFunc(BG_Item):
 #class BG_TableFunc(BG_Item):
 
 class BG_Decart:
-	def flatten(*x):
-		'''flatten nested list/tuple'''
-		for i in x:
-			try:
-				for j in BG_Decart.flatten(*i):
-					yield j
-			except TypeError:
-				yield i
-
 	def __min_max(self, x_min, y_min, x_max, y_max):
 		if self._x_min == None or x_min != None and x_min < self._x_min        : self._x_min = x_min
 		if self._x_max == None or x_max != None and         self._x_max < x_max: self._x_max = x_max
@@ -242,8 +261,9 @@ class BG_Decart:
 		if self._y_min == None or y_min != None and y_min < self._y_min        : self._y_min = y_min
 		if self._y_max == None or y_max != None and         self._y_max < y_max: self._y_max = y_max
 
-	def __init__(self, canvas, *args):
+	def __init__(self, canvas, prop, *args):
 		self._canvas = canvas
+		self._prop   = prop
 
 		self._data = args
 
@@ -256,13 +276,14 @@ class BG_Decart:
 		self._canvas.clear()
 
 	def draw(self, *args):
-		a = tuple(BG_Decart.flatten(args))
+		a = tuple(flatten(args))
+		BG_Item.setProp(self._prop)
 
 		for i in a:
 			b = i.getSize()
 			self.__min_max(*b)
 
-		for i in BG_Decart.flatten(self._data, a):
+		for i in flatten(self._data, a):
 			i.draw(self._canvas, self._x_min,
 			                     self._y_min,
 			                     self._x_max,
