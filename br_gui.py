@@ -90,6 +90,13 @@ class BG_HtmlCanvas(BG_CanvasBase):
 		self.size_x = size_x
 		self.size_y = size_y
 
+	def fit(self):
+		x = window.innerWidth  - self.get().getBoundingClientRect().left  - 16 -200
+		y = window.innerHeight - self.get().getBoundingClientRect().top   - 16
+		window.resizeCanvas(self.__context, x, y)
+		self.size_x = x
+		self.size_y = y
+
 	def get(self):
 		return self.__canvas
 
