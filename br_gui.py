@@ -61,6 +61,23 @@ class BG_CheckBox:
 	def set(self, state=True):
 		document[self._id].checked = state
 
+class BG_Range:
+	def __init__(self, callback):
+		self._id  = str(uuid4())
+		self._data = html.INPUT(type  = 'range',
+		                        style = 'transform: rotate(-90deg); transform-origin: 0px 0px;',
+		                        min   = '-50',
+		                        max   = '50',
+		                        value = '0',
+		                        id    = self._id)
+#
+		self._data.bind('change', lambda event: callback(float(event.target.value) / 100))
+#		self._data.bind('input''  lambda event: callback(float(event.target.value) / 100))
+	def get(self):
+		return self._data
+
+	def getState(self):
+		return float(document[self._id].value) / 100
 class BG_Property:          pass
 
 class BG_LogY(BG_Property): pass
