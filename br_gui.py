@@ -383,6 +383,7 @@ class BG_Decart:
 
 		BG_Item.base(self._x_min, self._y_min, self._x_max, self._y_max)
 
+		self.clear()
 		for i in flatten(self._data, a):
 			i.draw(self._canvas, self._x_min,
 			                     self._y_min,
@@ -390,8 +391,6 @@ class BG_Decart:
 			                     self._y_max)
 
 	def redraw(self, *args):
-		self.clear()
-
 		self._x_min = None
 		self._y_min = None
 		self._x_max = None
