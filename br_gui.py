@@ -42,11 +42,12 @@ class BG_Html:
 		except AttributeError:
 			self._data <= other
 
+	def get(self):
+		return self._data
+
 class BG_Div(BG_Html):
 	def __init__(self):
 		self._data = html.DIV()
-	def get(self):
-		return self._data
 
 class BG_LocalTextFile(BG_Html):
 	def __init__(self, callback):
@@ -60,9 +61,6 @@ class BG_LocalTextFile(BG_Html):
 			reader.bind('load', lambda event: callback(event.target.result))
 
 		self._data.bind('input', input)
-
-	def get(self):
-		return self._data
 #class BG_LocalTextFile:
 
 class BG_CheckBox(BG_Html):
@@ -71,9 +69,6 @@ class BG_CheckBox(BG_Html):
 		if title != None:
 			self._data['title'] = str(title)
 		self._data.bind('change', lambda event: callback(event.target.checked))
-
-	def get(self):
-		return self._data
 
 	def getState(self):
 		return self._data.checked
@@ -93,21 +88,9 @@ class BG_Range(BG_Html):
 #
 		self._data.bind('change', hook)
 #		self._data.bind('input''  hook)
-	def get(self):
-		return self._data
 
 	def getState(self):
 		return float(self._data.value) / 100
-
-class BG_Property:          pass
-
-class BG_LogY(BG_Property): pass
-
-class BG_Affinis(BG_Property):
-	def __init__(self, tg=0):
-		self._tg = tg
-	def tg(self):
-		return self._tg
 
 class BG_CanvasBase:
 	LEFT   = 0x1
@@ -181,6 +164,16 @@ class BG_SVG(BG_CanvasBase):
 		                        y2=Y(y1),
 		                        stroke_width="1",
 		                        stroke="brown")
+
+class BG_Property:          pass
+
+class BG_LogY(BG_Property): pass
+
+class BG_Affinis(BG_Property):
+	def __init__(self, tg=0):
+		self._tg = tg
+	def tg(self):
+		return self._tg
 
 class BG_Item:
 	# Координаты математики
