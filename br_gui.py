@@ -7,7 +7,6 @@ from browser        import svg
 
 from math           import *
 from itertools      import *
-from uuid           import uuid4
 
 def flatten(*x):
 	'''flatten nested list/tuple'''
@@ -35,14 +34,11 @@ class BG_LocalTextFile:
 		self._data = html.INPUT(type='file')
 
 		def input(event):
-			def load(event):
-				callback(event.target.result)
-
 			file = self._data.files[0]
 
 			reader = window.FileReader.new()
 			reader.readAsText(file)
-			reader.bind('load', load)
+			reader.bind('load', lambda event: callback(event.target.result))
 
 		self._data.bind('input', input)
 
@@ -51,33 +47,39 @@ class BG_LocalTextFile:
 #class BG_LocalTextFile:
 
 class BG_CheckBox:
-	def __init__(self, hook, title=''):
-		self._id  = str(uuid4())
-		self._data = html.INPUT(type='checkbox', onchange=hook, title=str(title), id=self._id)
+	def __init__(self, callback, title=None):
+		self._data = html.INPUT(type='checkbox')
+		if title != None:
+			self._data['title'] = str(title)
+		self._data.bind('change', lambda event: callback(event.target.checked))
+
 	def get(self):
 		return self._data
+
 	def getState(self):
-		return document[self._id].checked
+		return self._data.checked
+
 	def set(self, state=True):
-		document[self._id].checked = state
+		self._data.checked = state
 
 class BG_Range:
 	def __init__(self, callback):
-		self._id  = str(uuid4())
 		self._data = html.INPUT(type  = 'range',
 		                        style = 'transform: rotate(-90deg); transform-origin: 0px 0px;',
 		                        min   = '-50',
 		                        max   = '50',
-		                        value = '0',
-		                        id    = self._id)
+		                        value = '0')
+		def hook(event):
+			return callback(float(event.target.value) / 100)
 #
-		self._data.bind('change', lambda event: callback(float(event.target.value) / 100))
-#		self._data.bind('input''  lambda event: callback(float(event.target.value) / 100))
+		self._data.bind('change', hook)
+#		self._data.bind('input''  hook)
 	def get(self):
 		return self._data
 
 	def getState(self):
-		return float(document[self._id].value) / 100
+		return float(self._data.value) / 100
+
 class BG_Property:          pass
 
 class BG_LogY(BG_Property): pass
@@ -202,6 +204,12 @@ class BG_Item:
 		b = ceil(log(ma, 10))
 		return map(lambda i: 10**i, range(a, b))
 
+	def dashes_y(mi, ma):
+		if not BG_LogY in BG_Item._prop:
+			return BG_Item.dashes(mi, ma)
+		else:
+			return BG_Item._dashes_log(mi, ma)
+
 	def _linear(mi, x, ma): return (x-mi)/(ma-mi)
 	def _log(mi, y, ma):    return log(y/mi)/log(ma/mi)
 
@@ -226,29 +234,32 @@ class BG_Item:
 
 	def point(x, y):
 		x = BG_Item._linear(BG_Item._x_min, x, BG_Item._x_max)
-		if BG_Item._logY == False:
+		if not BG_LogY in BG_Item._prop:
 			y = BG_Item._linear(BG_Item._y_min, y, BG_Item._y_max)
 		else:
 			y = BG_Item._log   (BG_Item._y_min, y, BG_Item._y_max)
 
-		if BG_Item._affinisTg != None:
-			x, y = BG_Item._affinis(x, y, BG_Item._affinisTg.tg())
+		try:
+			x, y = BG_Item._affinis(x, y, BG_Item._prop[BG_Affinis].tg())
+		except KeyError:
+			pass
 
 		return BG_Item._compress(x, y)
 
 	def setProp(prop):
-		BG_Item._logY = False
-		BG_Item._affinisTg = None
-		BG_Item.dashes_y = BG_Item.dashes
+		try:
+			BG_Item._prop
+		except AttributeError:
+			BG_Item._prop = dict()
 
 		for i in flatten(prop):
-			if   isinstance(i, BG_LogY):
-				BG_Item._logY      = True
-				BG_Item.dashes_y   = BG_Item._dashes_log
-			elif isinstance(i, BG_Affinis):
-				BG_Item._affinisTg = i
-			else:
-				raise Exception()
+			BG_Item._prop[type(i)] = i
+
+	def delProp(prop):
+		try:
+			del BG_Item._prop[type(prop)]
+		except KeyError:
+			pass
 #class BG_Item:
 
 class BG_Space(BG_Item):
@@ -371,12 +382,8 @@ class BG_Decart:
 
 		if self._y_min == None or y_min != None and y_min < self._y_min        : self._y_min = y_min
 		if self._y_max == None or y_max != None and         self._y_max < y_max: self._y_max = y_max
-
-	def __init__(self, canvas, prop, *args):
+	def __init__(self, canvas):
 		self._canvas = canvas
-		self._prop   = prop
-
-		self._data = args
 
 		self._x_min = None
 		self._y_min = None
@@ -386,32 +393,39 @@ class BG_Decart:
 	def clear(self):
 		self._canvas.clear()
 
-	def setProp(self, prop):
+	def setProp(self, *prop):
 		self._prop = prop
 		BG_Item.setProp(self._prop)
 
-	def draw(self, *args):
-		a = tuple(flatten(args))
-		BG_Item.setProp(self._prop)
+	def delProp(self, *prop):
+		for i in flatten(prop):
+			BG_Item.delProp(i)
 
-		for i in a:
+	def setRooler(self, *rooler):
+		self._rooler = rooler
+
+	def draw(self, *data):
+		self._data = data
+		self.redraw()
+
+	def redraw(self):
+		self._x_min = None
+		self._y_min = None
+		self._x_max = None
+		self._y_max = None
+
+		data = tuple(flatten(self._data))
+
+		for i in data:
 			b = i.getSize()
 			self.__min_max(*b)
 
 		BG_Item.base(self._x_min, self._y_min, self._x_max, self._y_max)
 
 		self.clear()
-		for i in flatten(self._data, a):
+		for i in flatten(self._rooler, data):
 			i.draw(self._canvas, self._x_min,
 			                     self._y_min,
 			                     self._x_max,
 			                     self._y_max)
-
-	def redraw(self, *args):
-		self._x_min = None
-		self._y_min = None
-		self._x_max = None
-		self._y_max = None
-
-		self.draw(*args)
 #class BG_Decart:
