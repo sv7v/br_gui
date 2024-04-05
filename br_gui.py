@@ -29,7 +29,26 @@ class BG_Table:
 		return self._table
 #class BG_Table:
 
-class BG_LocalTextFile:
+class BG_Html:
+	def show(self, show=True):
+		if show:
+			self._data.style.display = 'inline'
+		else:
+			self._data.style.display = 'none'
+
+	def __le__(self, other):
+		try:
+			self._data <= other.get()
+		except AttributeError:
+			self._data <= other
+
+class BG_Div(BG_Html):
+	def __init__(self):
+		self._data = html.DIV()
+	def get(self):
+		return self._data
+
+class BG_LocalTextFile(BG_Html):
 	def __init__(self, callback):
 		self._data = html.INPUT(type='file')
 
@@ -46,7 +65,7 @@ class BG_LocalTextFile:
 		return self._data
 #class BG_LocalTextFile:
 
-class BG_CheckBox:
+class BG_CheckBox(BG_Html):
 	def __init__(self, callback, title=None):
 		self._data = html.INPUT(type='checkbox')
 		if title != None:
@@ -62,7 +81,7 @@ class BG_CheckBox:
 	def set(self, state=True):
 		self._data.checked = state
 
-class BG_Range:
+class BG_Range(BG_Html):
 	def __init__(self, callback):
 		self._data = html.INPUT(type  = 'range',
 		                        style = 'transform: rotate(-90deg); transform-origin: 0px 0px;',
