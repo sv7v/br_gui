@@ -165,15 +165,66 @@ class BG_SVG(BG_CanvasBase):
 		                        stroke_width="1",
 		                        stroke="brown")
 
-class BG_Property:          pass
+class BG_Property:
+	def base(x_min, y_min, x_max, y_max):
+		BG_Property._x_min = x_min;
+		BG_Property._y_min = y_min;
+		BG_Property._x_max = x_max;
+		BG_Property._y_max = y_max;
 
-class BG_LogY(BG_Property): pass
+	def convert(self, x, y):
+		return self.conv_x(x), self.conv_y(y)
+
+	def revers(self, x, y):
+		def rev(mi, x, ma):
+			return (x-mi)/(ma-mi)
+		return rev(x), rev(y)
+
+class BG_Liner(BG_Property):
+	# min max
+	#  0   1
+	def __init__(self):
+		def linear(mi, a, ma): return (a-mi)/(ma-mi)
+
+		self.conv_x = lambda a: linear(BG_Property._x_min, a, BG_Property._x_max)
+		self.conv_y = lambda a: linear(BG_Property._y_min, a, BG_Property._y_max)
+
+class BG_LogY(BG_Liner):
+	def __init__(self):
+		super().__init__()
+		def l(mi, y, ma):    return log(y/mi)/log(ma/mi)
+
+		self.conv_y = lambda y: l(BG_Property._y_min, y, BG_Property._y_max)
 
 class BG_Affinis(BG_Property):
 	def __init__(self, tg=0):
 		self._tg = tg
-	def tg(self):
-		return self._tg
+
+	def convert(self, x, y):
+		tg = self._tg
+		if    0   <= tg <= 0.5:
+			# x = x
+			y = y*(1-tg)+x*tg
+		elif -0.5 <= tg <  0:
+			# x = x
+			y = y*(1+tg)-tg+x*tg
+		else:
+			raise Exception()
+		return x, y
+
+
+class BG_Compress(BG_Property):
+	# 0   1        0   1
+	# 0.1 0.9     mi  ma
+	def __init__(self):
+		mi = 0.1
+		ma = 0.9
+
+		def conv(x): return mi + x*(ma-mi)
+		def rev(x):  return (x-mi)/(ma-mi)
+
+		self.conv_x = conv
+		self.conv_y = conv
 
 class BG_Item:
 	# Координаты математики
@@ -190,6 +241,8 @@ class BG_Item:
 
 		BG_Item._x_max = x_max
 		BG_Item._y_max = y_max
+
+		BG_Property.base(x_min, y_min, x_max, y_max)
 
 	def dashes(mi, ma):
 		if mi == None or ma == None:
@@ -222,41 +275,14 @@ class BG_Item:
 		else:
 			return BG_Item._dashes_log(mi, ma)
 
-	def _linear(mi, x, ma): return (x-mi)/(ma-mi)
-	def _log(mi, y, ma):    return log(y/mi)/log(ma/mi)
-
-	def _affinis(x, y, tg):
-		if    0   <= tg <= 0.5:
-			# x = x
-			y = y*(1-tg)+x*tg
-		elif -0.5 <= tg <  0:
-			# x = x
-			y = y*(1+tg)-tg+x*tg
-		else:
-			raise Exception()
-		return x, y
-
-	def _compress(x, y):
-		x_min, y_min, x_max, y_max = 0.1, 0.1, 0.9, 0.9
-
-		x = x_min + x*(x_max-x_min)
-		y = y_min + y*(y_max-y_min)
-
-		return x, y
-
 	def point(x, y):
-		x = BG_Item._linear(BG_Item._x_min, x, BG_Item._x_max)
-		if not BG_LogY in BG_Item._prop:
-			y = BG_Item._linear(BG_Item._y_min, y, BG_Item._y_max)
-		else:
-			y = BG_Item._log   (BG_Item._y_min, y, BG_Item._y_max)
-
 		try:
-			x, y = BG_Item._affinis(x, y, BG_Item._prop[BG_Affinis].tg())
+			x, y = BG_Item._prop[BG_LogY].convert(x, y)
 		except KeyError:
-			pass
+			x, y = BG_Liner().convert(x, y)
 
-		return BG_Item._compress(x, y)
+		x, y = BG_Item._prop[BG_Affinis].convert(x, y)
+		return BG_Compress().convert(x, y)
 
 	def setProp(prop):
 		try:
@@ -266,6 +292,9 @@ class BG_Item:
 
 		for i in flatten(prop):
 			BG_Item._prop[type(i)] = i
+
+			if type(i) == BG_Liner: BG_Item.delProp(BG_LogY())
+			if type(i) == BG_LogY:  BG_Item.delProp(BG_Liner())
 
 	def delProp(prop):
 		try:
