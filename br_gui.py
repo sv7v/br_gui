@@ -49,6 +49,9 @@ class BG_Div(BG_Html):
 	def __init__(self):
 		self._data = html.DIV()
 
+	def setText(self, text):
+		self._data.text = str(text)
+
 class BG_LocalTextFile(BG_Html):
 	def __init__(self, callback):
 		self._data = html.INPUT(type='file')
@@ -121,6 +124,10 @@ class BG_HtmlCanvas(BG_CanvasBase):
 	def get(self):
 		return self.__canvas
 
+	def mousemove(self, callback):
+		self.__canvas.bind('mousemove', lambda event: callback(event.offsetX/self.size_x,
+		                                                       event.offsetY/self.size_y))
+
 	def clear(self):
 		self.__context.clearRect(0, 0, self.size_x, self.size_y)
 
@@ -176,25 +183,33 @@ class BG_Property:
 		return self.conv_x(x), self.conv_y(y)
 
 	def revers(self, x, y):
-		def rev(mi, x, ma):
-			return (x-mi)/(ma-mi)
-		return rev(x), rev(y)
+		return self.rev_x(x), self.rev_y(y)
 
 class BG_Liner(BG_Property):
 	# min max
 	#  0   1
 	def __init__(self):
-		def linear(mi, a, ma): return (a-mi)/(ma-mi)
+		def linear(mi, a, ma):    return (a-mi)/(ma-mi)
 
 		self.conv_x = lambda a: linear(BG_Property._x_min, a, BG_Property._x_max)
 		self.conv_y = lambda a: linear(BG_Property._y_min, a, BG_Property._y_max)
 
+		def liner_rev(mi, a, ma):
+			return mi + a*(ma-mi)
+
+		self.rev_x  = lambda a: liner_rev(BG_Property._x_min, a, BG_Property._x_max)
+		self.rev_y  = lambda a: liner_rev(BG_Property._y_min, a, BG_Property._y_max)
+
 class BG_LogY(BG_Liner):
 	def __init__(self):
 		super().__init__()
-		def l(mi, y, ma):    return log(y/mi)/log(ma/mi)
+		def l(mi, y, ma):     return log(y/mi)/log(ma/mi)
 
-		self.conv_y = lambda y: l(BG_Property._y_min, y, BG_Property._y_max)
+		self.conv_y = lambda y: l    (BG_Property._y_min, y, BG_Property._y_max)
+
+		def l_rev(mi, y, ma): return mi * exp(y*log(ma/mi))
+
+		self.rev_y = lambda y:  l_rev(BG_Property._y_min, y, BG_Property._y_max)
 
 class BG_Affinis(BG_Property):
 	def __init__(self, tg=0):
@@ -212,6 +227,18 @@ class BG_Affinis(BG_Property):
 			raise Exception()
 		return x, y
 
+	def revers(self, x, y):
+		tg = self._tg
+		if    0   <= tg <= 0.5:
+			# x = x
+			y = (y-x*tg)/(1-tg)
+		elif -0.5 <= tg <  0:
+			# x = x
+			y = (y+tg-x*tg)/(1+tg)
+		else:
+			raise Exception()
+		return x, y
+
 
 class BG_Compress(BG_Property):
 	# 0   1        0   1
@@ -225,6 +252,9 @@ class BG_Compress(BG_Property):
 
 		self.conv_x = conv
 		self.conv_y = conv
+
+		self.rev_x  = rev
+		self.rev_y  = rev
 
 class BG_Item:
 	# Координаты математики
@@ -283,6 +313,16 @@ class BG_Item:
 
 		x, y = BG_Item._prop[BG_Affinis].convert(x, y)
 		return BG_Compress().convert(x, y)
+
+	def revers(x, y):
+		y = 1 - y
+		x, y = BG_Compress().revers(x, y)
+		x, y = BG_Item._prop[BG_Affinis].revers(x, y)
+		try:
+			x, y = BG_Item._prop[BG_LogY].revers(x, y)
+		except KeyError:
+			x, y = BG_Liner().revers(x, y)
+		return x, y
 
 	def setProp(prop):
 		try:
@@ -430,6 +470,11 @@ class BG_Decart:
 		self._y_min = None
 		self._x_max = None
 		self._y_max = None
+
+	def mousemove(self, callback):
+		def cb(x, y):
+			callback(*BG_Item.revers(x, y))
+		self._canvas.mousemove(cb)
 
 	def clear(self):
 		self._canvas.clear()
