@@ -55,7 +55,6 @@ class BG_Div(BG_Html):
 class BG_LocalTextFile(BG_Html):
 	def __init__(self, callback):
 		self._data = html.INPUT(type='file')
-
 		def input(event):
 			file = self._data.files[0]
 
@@ -471,6 +470,8 @@ class BG_Decart:
 		self._x_max = None
 		self._y_max = None
 
+		self._data = []
+
 	def mousemove(self, callback):
 		def cb(x, y):
 			callback(*BG_Item.revers(x, y))
@@ -491,7 +492,7 @@ class BG_Decart:
 		self._rooler = rooler
 
 	def draw(self, *data):
-		self._data = data
+		self._data.append(data)
 		self.redraw()
 
 	def redraw(self):
