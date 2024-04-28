@@ -134,11 +134,18 @@ class BG_HtmlCanvas(BG_CanvasBase):
 	def Y(self, y): return round(self.size_y*(1-y))
 
 	def line(self, a, b):
+		x0 = self.X(a[0])
+		y0 = self.Y(a[1])
+		x1 = self.X(b[0])
+		y1 = self.Y(b[1])
+		if (x0, y0) == (x1, y1):
+			return
+
 		c = self.__context
 
 		c.beginPath()
-		c.moveTo(self.X(a[0]), self.Y(a[1]))
-		c.lineTo(self.X(b[0]), self.Y(b[1]))
+		c.moveTo(x0, y0)
+		c.lineTo(x1, y1)
 		c.stroke()
 
 	def text(self, a, align, text):
