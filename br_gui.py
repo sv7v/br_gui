@@ -7,6 +7,7 @@ from browser        import svg
 
 from math           import *
 from itertools      import *
+from io             import StringIO
 
 def flatten(*x):
 	'''flatten nested list/tuple'''
@@ -54,13 +55,17 @@ class BG_Div(BG_Html):
 
 class BG_LocalTextFile(BG_Html):
 	def __init__(self, callback):
+		def readlines(s):
+			with StringIO(s) as f:
+				return f.readlines()
+
 		self._data = html.INPUT(type='file')
 		def input(event):
 			file = self._data.files[0]
 
 			reader = window.FileReader.new()
 			reader.readAsText(file)
-			reader.bind('load', lambda event: callback(event.target.result))
+			reader.bind('load', lambda event: callback(readlines(event.target.result)))
 
 		self._data.bind('input', input)
 #class BG_LocalTextFile:
