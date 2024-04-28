@@ -443,8 +443,8 @@ class BG_TableFunc(BG_Item):
 	def draw(self, canvas, x_min, y_min, x_max, y_max):
 		'''Минимальные и максимальные координаты
 		соответствующие 'рамке' графика.'''
+		BG_Item.base(x_min, y_min, x_max, y_max)
 		for (x0,y0),(x1,y1) in pair(self._data):
-			BG_Item.base(x_min, y_min, x_max, y_max)
 			canvas.line(BG_Item.point(x0, y0),
 			            BG_Item.point(x1, y1))
 	def getSize(self):
