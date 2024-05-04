@@ -31,11 +31,12 @@ class BG_Table:
 #class BG_Table:
 
 class BG_Html:
+	def inline(self): self._data.style.display = 'inline'
+	def none(self):   self._data.style.display = 'none'
+
 	def show(self, show=True):
-		if show:
-			self._data.style.display = 'inline'
-		else:
-			self._data.style.display = 'none'
+		if show: self.inline()
+		else:    self.none()
 
 	def __le__(self, other):
 		try:
