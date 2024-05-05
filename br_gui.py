@@ -516,6 +516,9 @@ class BG_Decart:
 
 		data = tuple(flatten(self._data))
 
+		if 0 == len(data):
+			return
+
 		for i in data:
 			b = i.getSize()
 			self.__min_max(*b)
