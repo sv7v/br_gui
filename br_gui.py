@@ -286,6 +286,9 @@ class BG_Item:
 
 		BG_Property.base(x_min, y_min, x_max, y_max)
 
+	def getSize(self):
+		return None, None, None, None
+
 	def dashes(mi, ma):
 		if mi == None or ma == None:
 			return None, ()
@@ -398,9 +401,6 @@ class BG_Frame(BG_Item):
 			canvas.line(c, d)     # правая
 			canvas.text(b, BG_CanvasBase.RIGHT, y)
 			canvas.text(d, BG_CanvasBase.LEFT,  y)
-
-	def getSize(self):
-		return None, None, None, None
 #class BG_Frame(BG_Item):
 
 class BG_Grid(BG_Item):
@@ -415,9 +415,6 @@ class BG_Grid(BG_Item):
 			b = BG_Item.point(x_max, y)
 			canvas.line(a, b)
 
-	def getSize(self):
-		return None, None, None, None
-
 class BG_BubbleLevel(BG_Item):
 	def __init__(self, n):
 		self._n = n
@@ -427,8 +424,6 @@ class BG_BubbleLevel(BG_Item):
 			y = (1/self._n)*(i+0.5)
 			canvas.line((0, y), (1, y))
 
-	def getSize(self):
-		return None, None, None, None
 
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
