@@ -136,8 +136,8 @@ class BG_HtmlCanvas(BG_CanvasBase):
 	def clear(self):
 		self.__context.clearRect(0, 0, self.size_x, self.size_y)
 
-	def X(self, x): return round(x*self.size_x)
-	def Y(self, y): return round(self.size_y*(1-y))
+	def X(self, x): return round(x * (self.size_x-1))      +0.5
+	def Y(self, y): return round((self.size_y-1) * (1-y))  +0.5
 
 	def line(self, a, b):
 		x0 = self.X(a[0])
