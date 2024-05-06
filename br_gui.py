@@ -163,6 +163,21 @@ class BG_HtmlCanvas(BG_CanvasBase):
 			raise Exception()
 		self.__context.fillStyle = '#000'
 		self.__context.fillText(str(text), self.X(a[0]), self.Y(a[1]))
+
+	def getRect(self, x, y, size_x, size_y):
+		s_x = round(size_x * self.size_x)
+		s_y = round(size_y * self.size_y)
+
+		if s_x == 0 : s_x = 1
+		if s_y == 0 : s_y = 1
+
+		return self.__context.getImageData(self.X(x),
+		                                   self.Y(y),
+		                                   s_x,
+		                                   s_y)
+
+	def putRect(self, data, x, y):
+		self.__context.putImageData(data, self.X(x), self.Y(y))
 #class BG_HtmlCanvas(BG_CanvasBase):
 
 class BG_SVG(BG_CanvasBase):
@@ -424,6 +439,21 @@ class BG_BubbleLevel(BG_Item):
 			y = (1/self._n)*(i+0.5)
 			canvas.line((0, y), (1, y))
 
+class BG_VerticalRooler(BG_Item):
+	def __init__(self, canvas):
+		self._canvas = canvas
+
+		self._x = 0
+		self._data = self._canvas.getRect(self._x, 1, 0, 1)
+
+	def draw(self, x):
+		self._canvas.putRect(self._data, self._x, 1)
+
+		a, b = BG_Item.point(x, 1)
+		self._data = self._canvas.getRect(a, 1, 0, 1)
+		self._x = a
+
+		self._canvas.line((a, 1), (a, 0))
 
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
