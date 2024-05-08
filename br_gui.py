@@ -1,5 +1,11 @@
 '''
 Project 'Browser GUI for Brython' (BG)
+См.:
+-  https://brython.info/
+-  https://t.me/olympgeom/568
+   https://paolini.github.io/rosette/
+-  https://stackoverflow.com/questions/53427699/editing-selections-of-path-points-or-line
+   https://ru.stackoverflow.com/questions/1099795/Редактирование-выбора-точек-пути-или-линии
 '''
 from browser    import *
 from pair_iterator  import *
@@ -72,11 +78,14 @@ class BG_LocalTextFile(BG_Html):
 #class BG_LocalTextFile:
 
 class BG_CheckBox(BG_Html):
-	def __init__(self, callback, title=None):
+	def __init__(self, title=None):
 		self._data = html.INPUT(type='checkbox')
 		if title != None:
 			self._data['title'] = str(title)
-		self._data.bind('change', lambda event: callback(event.target.checked))
+
+	def setCallback(self, callback):
+		self._callback = callback
+		self._data.bind('change', lambda event: self._callback(event.target.checked))
 
 	def getState(self):
 		return self._data.checked
@@ -100,7 +109,7 @@ class BG_Range(BG_Html):
 	def getState(self):
 		return float(self._data.value) / 100
 
-class BG_CanvasBase:
+class BG_CanvasBase(BG_Html):
 	LEFT   = 0x1
 	BOTTOM = 0x1 << 1
 	RIGHT  = 0x1 << 2
@@ -113,8 +122,8 @@ class BG_CanvasBase:
 
 class BG_HtmlCanvas(BG_CanvasBase):
 	def __init__(self, size_x, size_y):
-		self.__canvas  = html.CANVAS(width=size_x, height=size_y)
-		self.__context = self.__canvas.getContext('2d')
+		self._data     = html.CANVAS(width=size_x, height=size_y)
+		self.__context = self._data.getContext('2d')
 
 		self.size_x = size_x
 		self.size_y = size_y
@@ -126,12 +135,9 @@ class BG_HtmlCanvas(BG_CanvasBase):
 		self.size_x = x
 		self.size_y = y
 
-	def get(self):
-		return self.__canvas
-
-	def mousemove(self, callback):
-		self.__canvas.bind('mousemove', lambda event: callback(event.offsetX/self.size_x,
-		                                                       event.offsetY/self.size_y))
+	def mouseover(self, callback):
+		self._data.bind('mousemove', lambda event: callback(event.offsetX/self.size_x,
+		                                                    event.offsetY/self.size_y))
 
 	def clear(self):
 		self.__context.clearRect(0, 0, self.size_x, self.size_y)
@@ -439,21 +445,21 @@ class BG_BubbleLevel(BG_Item):
 			y = (1/self._n)*(i+0.5)
 			canvas.line((0, y), (1, y))
 
-class BG_VerticalRooler(BG_Item):
-	def __init__(self, canvas):
-		self._canvas = canvas
+class BG_Tool:
+	pass
 
-		self._x = 0
-		self._data = self._canvas.getRect(self._x, 1, 0, 1)
+class BG_VerticalRooler(BG_Tool):
+	def __init__(self):
+		self._data = [None]
 
-	def draw(self, x):
-		self._canvas.putRect(self._data, self._x, 1)
+	def mouseover(self, x):
+		if self._data[0] != None:
+			self._clear(self._data)
+		self._data = self._draw(x)
 
-		a, b = BG_Item.point(x, 1)
-		self._data = self._canvas.getRect(a, 1, 0, 1)
-		self._x = a
-
-		self._canvas.line((a, 1), (a, 0))
+	def setCallback(self, clear_callback, draw_callback):
+		self._clear = clear_callback
+		self._draw  = draw_callback
 
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
@@ -493,30 +499,28 @@ class BG_TableFunc(BG_Item):
 		        self._y_max)
 #class BG_TableFunc(BG_Item):
 
-class BG_Decart:
+class BG_Decart(BG_HtmlCanvas):
 	def __min_max(self, x_min, y_min, x_max, y_max):
 		if self._x_min == None or x_min != None and x_min < self._x_min        : self._x_min = x_min
 		if self._x_max == None or x_max != None and         self._x_max < x_max: self._x_max = x_max
 
 		if self._y_min == None or y_min != None and y_min < self._y_min        : self._y_min = y_min
 		if self._y_max == None or y_max != None and         self._y_max < y_max: self._y_max = y_max
-	def __init__(self, canvas):
-		self._canvas = canvas
+
+	def __init__(self):
+		super().__init__(1,1)
 
 		self._x_min = None
 		self._y_min = None
 		self._x_max = None
 		self._y_max = None
 
-		self._data = []
+		self._funcs = []
 
-	def mousemove(self, callback):
+	def mouseover(self, callback):
 		def cb(x, y):
 			callback(*BG_Item.revers(x, y))
-		self._canvas.mousemove(cb)
-
-	def clear(self):
-		self._canvas.clear()
+		super().mouseover(cb)
 
 	def setProp(self, *prop):
 		self._prop = prop
@@ -529,8 +533,12 @@ class BG_Decart:
 	def setRooler(self, *rooler):
 		self._rooler = rooler
 
-	def draw(self, *data):
-		self._data.append(data)
+	def setTools(self, tools):
+		tools.setCallback(lambda data: self.clearVertLine(data),
+		                  lambda x:    self.drawVertLine(x))
+
+	def draw(self, *funcs):
+		self._funcs.append(funcs)
 		self.redraw()
 
 	def redraw(self):
@@ -539,21 +547,32 @@ class BG_Decart:
 		self._x_max = None
 		self._y_max = None
 
-		data = tuple(flatten(self._data))
+		funcs = tuple(flatten(self._funcs))
 
-		if 0 == len(data):
+		if 0 == len(funcs):
 			return
 
-		for i in data:
+		for i in funcs:
 			b = i.getSize()
 			self.__min_max(*b)
 
 		BG_Item.base(self._x_min, self._y_min, self._x_max, self._y_max)
 
 		self.clear()
-		for i in flatten(self._rooler, data):
-			i.draw(self._canvas, self._x_min,
-			                     self._y_min,
-			                     self._x_max,
-			                     self._y_max)
-#class BG_Decart:
+		for i in flatten(self._rooler, funcs):
+			i.draw(self, self._x_min,
+			             self._y_min,
+			             self._x_max,
+			             self._y_max)
+
+	def drawVertLine(self, x):
+		a, b = BG_Item.point(x, 1)
+
+		rect = self.getRect(a, 1, 0, 1)
+		self.line((a, 1), (a, 0))
+
+		return (a, rect)
+
+	def clearVertLine(self, data):
+		self.putRect(data[1], data[0], 1)
+#class BG_Decart(BG_HtmlCanvas):
