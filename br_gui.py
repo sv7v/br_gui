@@ -125,25 +125,25 @@ class BG_HtmlCanvas(BG_CanvasBase):
 		self._data     = html.CANVAS(width=size_x, height=size_y)
 		self.__context = self._data.getContext('2d')
 
-		self.size_x = size_x
-		self.size_y = size_y
+		self._size_x = size_x
+		self._size_y = size_y
 
 	def fit(self):
 		x = window.innerWidth  - self.get().getBoundingClientRect().left  - 16 -200
 		y = window.innerHeight - self.get().getBoundingClientRect().top   - 12
 		window.resizeCanvas(self.__context, x, y)
-		self.size_x = x
-		self.size_y = y
+		self._size_x = x
+		self._size_y = y
 
 	def mouseover(self, callback):
-		self._data.bind('mousemove', lambda event: callback(event.offsetX/self.size_x,
-		                                                    event.offsetY/self.size_y))
+		self._data.bind('mousemove', lambda event: callback(event.offsetX/self._size_x,
+		                                                    event.offsetY/self._size_y))
 
 	def clear(self):
-		self.__context.clearRect(0, 0, self.size_x, self.size_y)
+		self.__context.clearRect(0, 0, self._size_x, self._size_y)
 
-	def X(self, x): return round(x * (self.size_x-1))      +0.5
-	def Y(self, y): return round((self.size_y-1) * (1-y))  +0.5
+	def X(self, x): return round(x * (self._size_x-1))      +0.5
+	def Y(self, y): return round((self._size_y-1) * (1-y))  +0.5
 
 	def line(self, a, b):
 		x0 = self.X(a[0])
@@ -171,8 +171,8 @@ class BG_HtmlCanvas(BG_CanvasBase):
 		self.__context.fillText(str(text), self.X(a[0]), self.Y(a[1]))
 
 	def getRect(self, x, y, size_x, size_y):
-		s_x = round(size_x * self.size_x)
-		s_y = round(size_y * self.size_y)
+		s_x = round(size_x * self._size_x)
+		s_y = round(size_y * self._size_y)
 
 		if s_x == 0 : s_x = 1
 		if s_y == 0 : s_y = 1
