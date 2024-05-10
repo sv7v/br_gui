@@ -135,6 +135,10 @@ class BG_HtmlCanvas(BG_CanvasBase):
 		self._size_x = x
 		self._size_y = y
 
+	def getSize(self):
+		return (self._size_x,
+		        self._size_y)
+
 	def mouseover(self, callback):
 		self._data.bind('mousemove', lambda event: callback(event.offsetX+0.5,
 		                                                    self._size_y - (event.offsetY+0.5),
@@ -177,19 +181,19 @@ class BG_HtmlCanvas(BG_CanvasBase):
 		self.__context.fillText(str(text), self.X(a[0]), self.Y(a[1]))
 
 	def getRect(self, x, y, size_x, size_y):
-		s_x = round(size_x * self._size_x)
-		s_y = round(size_y * self._size_y)
+		s_x = size_x
+		s_y = size_y
 
 		if s_x == 0 : s_x = 1
 		if s_y == 0 : s_y = 1
 
-		return self.__context.getImageData(self.X(x),
-		                                   self.Y(y),
+		return self.__context.getImageData(x,
+		                                   self._size_y - y,
 		                                   s_x,
 		                                   s_y)
 
 	def putRect(self, data, x, y):
-		self.__context.putImageData(data, self.X(x), self.Y(y))
+		self.__context.putImageData(data, x, self._size_y - y)
 #class BG_HtmlCanvas(BG_CanvasBase):
 
 class BG_SVG(BG_CanvasBase):
@@ -455,17 +459,24 @@ class BG_Tool:
 	pass
 
 class BG_VerticalRooler(BG_Tool):
-	def __init__(self):
-		self._data = [None]
+	def __init__(self, decart):
+		self._decart = decart
+		self._x      = None
+		self._data   = None
+		self._size_y = decart.getSize()[1]
 
-	def mouseover(self, x):
-		if self._data[0] != None:
-			self._clear(self._data)
-		self._data = self._draw(x)
+	def mouseover(self, dot_x, x):
+		if self._x != None:
+			self._clear()
+		self._x = dot_x
+		self._draw()
 
-	def setCallback(self, clear_callback, draw_callback):
-		self._clear = clear_callback
-		self._draw  = draw_callback
+	def _clear(self):
+		self._decart.putRect(self._data, round(self._x-0.5), self._size_y)
+
+	def _draw(self):
+		self._data = self._decart.getRect(round(self._x-0.5), self._size_y, 1, self._size_y)
+		self._decart.line0((self._x, 0.5), (self._x, round(self._size_y - 0.5)))
 
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
@@ -538,10 +549,6 @@ class BG_Decart(BG_HtmlCanvas):
 	def setRooler(self, *rooler):
 		self._rooler = rooler
 
-	def setTools(self, tools):
-		tools.setCallback(lambda data: self.clearVertLine(data),
-		                  lambda x:    self.drawVertLine(x))
-
 	def draw(self, *funcs):
 		self._funcs.append(funcs)
 		self.redraw()
@@ -569,15 +576,4 @@ class BG_Decart(BG_HtmlCanvas):
 			             self._y_min,
 			             self._x_max,
 			             self._y_max)
-
-	def drawVertLine(self, x):
-		a, b = BG_Item.point(x, 1)
-
-		rect = self.getRect(a, 1, 0, 1)
-		self.line((a, 1), (a, 0))
-
-		return (a, rect)
-
-	def clearVertLine(self, data):
-		self.putRect(data[1], data[0], 1)
 #class BG_Decart(BG_HtmlCanvas):
