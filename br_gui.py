@@ -136,8 +136,10 @@ class BG_HtmlCanvas(BG_CanvasBase):
 		self._size_y = y
 
 	def mouseover(self, callback):
-		self._data.bind('mousemove', lambda event: callback(event.offsetX/self._size_x,
-		                                                    event.offsetY/self._size_y))
+		self._data.bind('mousemove', lambda event: callback(event.offsetX+0.5,
+		                                                    self._size_y - (event.offsetY+0.5),
+		                                                    event.offsetX/(self._size_x-1),
+		                                                    event.offsetY/(self._size_y-1)))
 
 	def clear(self):
 		self.__context.clearRect(0, 0, self._size_x, self._size_y)
@@ -522,9 +524,8 @@ class BG_Decart(BG_HtmlCanvas):
 		self._funcs = []
 
 	def mouseover(self, callback):
-		def cb(x, y):
-			callback(*BG_Item.revers(x, y))
-		super().mouseover(cb)
+		super().mouseover(lambda dot_x, dot_y, x, y:
+		                  callback(dot_x, dot_y, *BG_Item.revers(x, y)))
 
 	def setProp(self, *prop):
 		self._prop = prop
