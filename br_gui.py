@@ -121,12 +121,38 @@ class BG_CanvasBase(BG_Html):
 #	def text(self, x, y, align, text)
 
 class BG_HtmlCanvas(BG_CanvasBase):
+	def __dot(self, event):
+		return (event.offsetX + 0.5,
+		        self._size_y - (event.offsetY + 0.5))
+
+	def __drag(self, x, y):
+		self._drag(self._pressed_x,                  self._pressed_y,
+			                 x,                                y,
+			   self._pressed_x/(self._size_x-1), self._pressed_y/(self._size_y-1),
+			                 x/(self._size_x-1),               y/(self._size_y-1))
+		self._pressed_x = x
+		self._pressed_y = y
+
 	def __init__(self, size_x, size_y):
 		self._data     = html.CANVAS(width=size_x, height=size_y)
 		self.__context = self._data.getContext('2d')
 
 		self._size_x = size_x
 		self._size_y = size_y
+
+		self._pressed = False
+
+		def button(event):
+			if   self._pressed == False and 0 <  (event.buttons & 1):
+				self._pressed = True
+				self._pressed_x, self._pressed_y = self.__dot(event)
+			elif self._pressed == True  and 0 == (event.buttons & 1):
+				self._pressed = False
+
+				self.__drag(*self.__dot(event))
+
+		self._data.bind('mousedown', button)
+		self._data.bind('mouseup',   button)
 
 	def fit(self):
 		x = window.innerWidth  - self.get().getBoundingClientRect().left  - 16 -200
@@ -140,10 +166,17 @@ class BG_HtmlCanvas(BG_CanvasBase):
 		        self._size_y)
 
 	def mouseover(self, callback):
-		self._data.bind('mousemove', lambda event: callback(event.offsetX+0.5,
-		                                                    self._size_y - (event.offsetY+0.5),
-		                                                    event.offsetX/(self._size_x-1),
-		                                                    event.offsetY/(self._size_y-1)))
+		def cb(event):
+			callback(*self.__dot(event),
+			         event.offsetX/(self._size_x-1),
+			         event.offsetY/(self._size_y-1))
+			if self._pressed:
+				self.__drag(*self.__dot(event))
+
+		self._data.bind('mousemove', cb)
+
+	def mousedrag(self, callback):
+		self._drag = callback
 
 	def clear(self):
 		self.__context.clearRect(0, 0, self._size_x, self._size_y)
@@ -482,18 +515,36 @@ class BG_LeftRightBorder(BG_Tool):
 	def __init__(self, decart):
 		self._decart = decart
 
-		left, bottom, right, top = decart.getMinMax()
+		self._left,  bottom, \
+		self._right, top     = decart.getMinMax()
 
-		self._left  = decart.dot(left, bottom)[0]
-		self._right = decart.dot(right, top)[0]
+		self._left_dot  = decart.dot(self._left,  bottom)[0]
+		self._right_dot = decart.dot(self._right, top   )[0]
 
 	def mouseover(self, dot_x, x):
-		if   abs(dot_x - self._left) <=3 :
+		if   abs(dot_x - self._left_dot)  <= 3:
 			self._decart.get().style.cursor = 'w-resize'
-		elif abs(dot_x - self._right) <= 3:
+		elif abs(dot_x - self._right_dot) <= 3:
 			self._decart.get().style.cursor = 'e-resize'
 		else:
 			self._decart.get().style.cursor = 'default'
+
+	def mousedrag(self, dot_x0, dot_x1, x0, x1):
+		if   abs(dot_x0 - self._left_dot)  <= 3:
+			self._left_dot = dot_x1
+			self._left     =     x1
+		elif abs(dot_x0 - self._right_dot) <= 3:
+			self._right_dot = dot_x1
+			self._right     =     x1
+
+		if self._left_dot <= self._right_dot:
+			#Ok
+			pass
+		else:
+			self._left_dot, self._right_dot = self._right_dot, self._left_dot
+
+	def get(self):
+		return self._left, self._right
 
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
@@ -554,6 +605,16 @@ class BG_Decart(BG_HtmlCanvas):
 	def mouseover(self, callback):
 		super().mouseover(lambda dot_x, dot_y, x, y:
 		                  callback(dot_x, dot_y, *BG_Item.revers(x, y)))
+
+	def mousedrag(self, callback):
+		super().mousedrag(lambda dot_prev_x, dot_prev_y,
+		                         dot_x,      dot_y,
+		                             prev_x,     prev_y,
+		                                  x,          y,:
+		                  callback(dot_prev_x, dot_prev_y,
+		                           dot_x,      dot_y,
+		                           *BG_Item.revers(prev_x, prev_y),
+		                           *BG_Item.revers(     x,      y)))
 
 	def setProp(self, *prop):
 		self._prop = prop
