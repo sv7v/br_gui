@@ -478,6 +478,23 @@ class BG_VerticalRooler(BG_Tool):
 		self._data = self._decart.getRect(round(self._x-0.5), self._size_y, 1, self._size_y)
 		self._decart.line0((self._x, 0.5), (self._x, round(self._size_y - 0.5)))
 
+class BG_LeftRightBorder(BG_Tool):
+	def __init__(self, decart):
+		self._decart = decart
+
+		left, bottom, right, top = decart.getMinMax()
+
+		self._left  = decart.dot(left, bottom)[0]
+		self._right = decart.dot(right, top)[0]
+
+	def mouseover(self, dot_x, x):
+		if   abs(dot_x - self._left) <=3 :
+			self._decart.get().style.cursor = 'w-resize'
+		elif abs(dot_x - self._right) <= 3:
+			self._decart.get().style.cursor = 'e-resize'
+		else:
+			self._decart.get().style.cursor = 'default'
+
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
 		'''Координаты математики'''
@@ -576,4 +593,14 @@ class BG_Decart(BG_HtmlCanvas):
 			             self._y_min,
 			             self._x_max,
 			             self._y_max)
+	def getMinMax(self):
+		return (self._x_min,
+		        self._y_min,
+		        self._x_max,
+		        self._y_max)
+
+	def dot(self, x, y):
+		a, b = BG_Item.point(x, y)
+		return (self.X(a),
+		        self.Y(b))
 #class BG_Decart(BG_HtmlCanvas):
