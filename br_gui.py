@@ -663,3 +663,10 @@ class BG_Decart(BG_HtmlCanvas):
 		return (self.X(a),
 		        self.Y(b))
 #class BG_Decart(BG_HtmlCanvas):
+
+class BG_Document:
+	def __le__(self, other):
+		try:
+			document <= other
+		except TypeError:
+			document <= other.get()
