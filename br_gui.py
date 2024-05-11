@@ -154,9 +154,7 @@ class BG_HtmlCanvas(BG_CanvasBase):
 		self._data.bind('mousedown', button)
 		self._data.bind('mouseup',   button)
 
-	def fit(self):
-		x = window.innerWidth  - self.get().getBoundingClientRect().left  - 16 -200
-		y = window.innerHeight - self.get().getBoundingClientRect().top   - 12
+	def resize(self, x, y):
 		window.resizeCanvas(self.__context, x, y)
 		self._size_x = x
 		self._size_y = y
