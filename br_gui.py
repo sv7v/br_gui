@@ -590,8 +590,8 @@ class BG_Decart(BG_HtmlCanvas):
 		if self._y_min == None or y_min != None and y_min < self._y_min        : self._y_min = y_min
 		if self._y_max == None or y_max != None and         self._y_max < y_max: self._y_max = y_max
 
-	def __init__(self):
-		super().__init__(1,1)
+	def __init__(self, size_x, size_y):
+		super().__init__(size_x, size_y)
 
 		self._x_min = None
 		self._y_min = None
