@@ -246,18 +246,58 @@ class BG_SVG(BG_CanvasBase):
 		                        stroke_width="1",
 		                        stroke="brown")
 
-class BG_Property:
-	def base(x_min, y_min, x_max, y_max):
-		BG_Property._x_min = x_min;
-		BG_Property._y_min = y_min;
-		BG_Property._x_max = x_max;
-		BG_Property._y_max = y_max;
+class BG_ItemSize:
+	def __init__(self, x_min = None,
+	                   y_min = None,
+	                   x_max = None,
+	                   y_max = None):
+		self.set(x_min,
+		         y_min,
+		         x_max,
+		         y_max)
 
+	def set(self, x_min,
+	              y_min,
+	              x_max,
+	              y_max):
+		self._x_min = x_min
+		self._y_min = y_min
+		self._x_max = x_max
+		self._y_max = y_max
+
+	def get_x_min(self): return self._x_min
+	def get_y_min(self): return self._y_min
+	def get_x_max(self): return self._x_max
+	def get_y_max(self): return self._y_max
+#class BG_ItemSize:
+
+class BG_RectangleArea:
+	def setSize(self, size,
+	                  y_min = None,
+	                  x_max = None,
+	                  y_max = None):
+		if   isinstance(size, BG_ItemSize) and {y_min, x_max, y_max}=={None}:
+			self._size = size
+		elif not isinstance(size, BG_ItemSize):
+			self._size = BG_ItemSize(size, y_min, x_max, y_max)
+		else:
+			raise Exception()
+
+	def getSize(self):
+		return self._size.get()
+#class BG_RectangleArea:
+
+class BG_Property(BG_RectangleArea):
 	def convert(self, x, y):
 		return self.conv_x(x), self.conv_y(y)
 
 	def revers(self, x, y):
 		return self.rev_x(x), self.rev_y(y)
+
+	def get_x_min(self): return self._size.get_x_min()
+	def get_y_min(self): return self._size.get_y_min()
+	def get_x_max(self): return self._size.get_x_max()
+	def get_y_max(self): return self._size.get_y_max()
 
 class BG_Liner(BG_Property):
 	# min max
@@ -265,25 +305,25 @@ class BG_Liner(BG_Property):
 	def __init__(self):
 		def linear(mi, a, ma):    return (a-mi)/(ma-mi)
 
-		self.conv_x = lambda a: linear(BG_Property._x_min, a, BG_Property._x_max)
-		self.conv_y = lambda a: linear(BG_Property._y_min, a, BG_Property._y_max)
+		self.conv_x = lambda a: linear(self.get_x_min(), a, self.get_x_max())
+		self.conv_y = lambda a: linear(self.get_y_min(), a, self.get_y_max())
 
 		def liner_rev(mi, a, ma):
 			return mi + a*(ma-mi)
 
-		self.rev_x  = lambda a: liner_rev(BG_Property._x_min, a, BG_Property._x_max)
-		self.rev_y  = lambda a: liner_rev(BG_Property._y_min, a, BG_Property._y_max)
+		self.rev_x  = lambda a: liner_rev(self.get_x_min(), a, self.get_x_max())
+		self.rev_y  = lambda a: liner_rev(self.get_y_min(), a, self.get_y_max())
 
 class BG_LogY(BG_Liner):
 	def __init__(self):
 		super().__init__()
 		def l(mi, y, ma):     return log(y/mi)/log(ma/mi)
 
-		self.conv_y = lambda y: l    (BG_Property._y_min, y, BG_Property._y_max)
+		self.conv_y = lambda y: l    (self.get_y_min(), y, self.get_y_max())
 
 		def l_rev(mi, y, ma): return mi * exp(y*log(ma/mi))
 
-		self.rev_y = lambda y:  l_rev(BG_Property._y_min, y, BG_Property._y_max)
+		self.rev_y = lambda y:  l_rev(self.get_y_min(), y, self.get_y_max())
 
 class BG_Affinis(BG_Property):
 	def __init__(self, tg=0):
@@ -330,7 +370,30 @@ class BG_Compress(BG_Property):
 		self.rev_x  = rev
 		self.rev_y  = rev
 
-class BG_Item:
+class BG_PropertyDict:
+	def __init__(self):
+		self._data = dict()
+
+	def set(self, prop):
+		for i in flatten(prop):
+			self._data[type(i)] = i
+
+			if type(i) == BG_Liner: self.__delitem__(BG_LogY())
+			if type(i) == BG_LogY:  self.__delitem__(BG_Liner())
+
+	def __getitem__(self, key):
+		return self._data[key]
+
+	def __delitem__(self, prop):
+		try:
+			del self._data[type(prop)]
+		except KeyError:
+			pass
+
+	def __contains__(self, key):
+		return key in self._data
+
+class BG_Item(BG_RectangleArea):
 	# Координаты математики
 #	def __init__(self, ...):
 #	def draw(self, canvas, x_min, y_min, x_max, y_max):
@@ -338,19 +401,6 @@ class BG_Item:
 #		соответствующие 'рамке' графика.'''
 #	def getSize(self):
 #		'''Минимальные и максимальные координаты для этого объекта'''
-
-	def base(x_min, y_min, x_max, y_max):
-		BG_Item._x_min = x_min
-		BG_Item._y_min = y_min
-
-		BG_Item._x_max = x_max
-		BG_Item._y_max = y_max
-
-		BG_Property.base(x_min, y_min, x_max, y_max)
-
-	def getSize(self):
-		return None, None, None, None
-
 	def dashes(mi, ma):
 		if mi == None or ma == None:
 			return None, ()
@@ -376,48 +426,33 @@ class BG_Item:
 		b = ceil(log(ma, 10))
 		return map(lambda i: 10**i, range(a, b))
 
-	def dashes_y(mi, ma):
-		if not BG_LogY in BG_Item._prop:
+	def dashes_y(self, mi, ma):
+		if not BG_LogY in self._prop:
 			return BG_Item.dashes(mi, ma)
 		else:
 			return BG_Item._dashes_log(mi, ma)
 
-	def point(x, y):
+	def point(self, x, y):
 		try:
-			x, y = BG_Item._prop[BG_LogY].convert(x, y)
+			x, y = self._prop[BG_LogY].convert(x, y)
 		except KeyError:
 			x, y = BG_Liner().convert(x, y)
 
-		x, y = BG_Item._prop[BG_Affinis].convert(x, y)
+		x, y = self._prop[BG_Affinis].convert(x, y)
 		return BG_Compress().convert(x, y)
 
-	def revers(x, y):
+	def revers(self, x, y):
 		y = 1 - y
 		x, y = BG_Compress().revers(x, y)
-		x, y = BG_Item._prop[BG_Affinis].revers(x, y)
+		x, y = self._prop[BG_Affinis].revers(x, y)
 		try:
-			x, y = BG_Item._prop[BG_LogY].revers(x, y)
+			x, y = self._prop[BG_LogY].revers(x, y)
 		except KeyError:
 			x, y = BG_Liner().revers(x, y)
 		return x, y
 
-	def setProp(prop):
-		try:
-			BG_Item._prop
-		except AttributeError:
-			BG_Item._prop = dict()
-
-		for i in flatten(prop):
-			BG_Item._prop[type(i)] = i
-
-			if type(i) == BG_Liner: BG_Item.delProp(BG_LogY())
-			if type(i) == BG_LogY:  BG_Item.delProp(BG_Liner())
-
-	def delProp(prop):
-		try:
-			del BG_Item._prop[type(prop)]
-		except KeyError:
-			pass
+	def setProperty(self, prop):
+		self._prop = prop
 #class BG_Item:
 
 class BG_Space(BG_Item):
@@ -438,15 +473,15 @@ class BG_Space(BG_Item):
 
 class BG_Frame(BG_Item):
 	def draw(self, canvas, x_min, y_min, x_max, y_max):
-		canvas.line(BG_Item.point(x_min, y_min), BG_Item.point(x_min, y_max))
-		canvas.line(BG_Item.point(x_min, y_max), BG_Item.point(x_max, y_max))
-		canvas.line(BG_Item.point(x_max, y_max), BG_Item.point(x_max, y_min))
-		canvas.line(BG_Item.point(x_max, y_min), BG_Item.point(x_min, y_min))
+		canvas.line(self.point(x_min, y_min), self.point(x_min, y_max))
+		canvas.line(self.point(x_min, y_max), self.point(x_max, y_max))
+		canvas.line(self.point(x_max, y_max), self.point(x_max, y_min))
+		canvas.line(self.point(x_max, y_min), self.point(x_min, y_min))
 
 		for x in BG_Frame.dashes(x_min, x_max):
-			a = BG_Item.point(x, y_max)
+			a = self.point(x, y_max)
 			b = (a[0], a[1]+0.02)
-			c = BG_Item.point(x, y_min)
+			c = self.point(x, y_min)
 			d = (c[0], c[1]-0.02)
 			canvas.line(a, b)          # верхняя
 			canvas.line(c, d)          # нижняя
@@ -454,10 +489,10 @@ class BG_Frame(BG_Item):
 				canvas.text(b, BG_CanvasBase.BOTTOM,  x)
 				canvas.text(d, BG_CanvasBase.TOP,     x)
 
-		for y in BG_Item.dashes_y(y_min, y_max):
-			a = BG_Item.point(x_min, y)
+		for y in self.dashes_y(y_min, y_max):
+			a = self.point(x_min, y)
 			b = (a[0]-0.02, a[1])
-			c = BG_Item.point(x_max, y)
+			c = self.point(x_max, y)
 			d = (c[0]+0.02, c[1])
 			canvas.line(a, b)     # левая
 			canvas.line(c, d)     # правая
@@ -468,13 +503,13 @@ class BG_Frame(BG_Item):
 class BG_Grid(BG_Item):
 	def draw(self, canvas, x_min, y_min, x_max, y_max):
 		for x in BG_Frame.dashes(x_min, x_max):
-			a = BG_Item.point(x, y_min)
-			b = BG_Item.point(x, y_max)
+			a = self.point(x, y_min)
+			b = self.point(x, y_max)
 			canvas.line(a, b)
 
-		for y in BG_Item.dashes_y(y_min, y_max):
-			a = BG_Item.point(x_min, y)
-			b = BG_Item.point(x_max, y)
+		for y in self.dashes_y(y_min, y_max):
+			a = self.point(x_min, y)
+			b = self.point(x_max, y)
 			canvas.line(a, b)
 
 class BG_BubbleLevel(BG_Item):
@@ -570,10 +605,9 @@ class BG_TableFunc(BG_Item):
 	def draw(self, canvas, x_min, y_min, x_max, y_max):
 		'''Минимальные и максимальные координаты
 		соответствующие 'рамке' графика.'''
-		BG_Item.base(x_min, y_min, x_max, y_max)
 		for (x0,y0),(x1,y1) in pair(self._data):
-			canvas.line(BG_Item.point(x0, y0),
-			            BG_Item.point(x1, y1))
+			canvas.line(self.point(x0, y0),
+			            self.point(x1, y1))
 	def getSize(self):
 		'''Минимальные и максимальные координаты для этого объекта'''
 		return (self._x_min,
@@ -599,10 +633,21 @@ class BG_Decart(BG_HtmlCanvas):
 		self._y_max = None
 
 		self._funcs = []
+		self._props = BG_PropertyDict()
+		self._area_size = BG_ItemSize(None, None, None, None)
+
+	def _getItem(self):
+		return tuple(flatten(self._funcs))[0]
+
+	def getPoint(self, x, y):
+		return self._getItem().point(x, y)
+
+	def getRevers(self, x, y):
+		return self._getItem().revers(x, y)
 
 	def mouseover(self, callback):
 		super().mouseover(lambda dot_x, dot_y, x, y:
-		                  callback(dot_x, dot_y, *BG_Item.revers(x, y)))
+		                  callback(dot_x, dot_y, *self.getRevers(x, y)))
 
 	def mousedrag(self, callback):
 		super().mousedrag(lambda dot_prev_x, dot_prev_y,
@@ -611,16 +656,17 @@ class BG_Decart(BG_HtmlCanvas):
 		                                  x,          y,:
 		                  callback(dot_prev_x, dot_prev_y,
 		                           dot_x,      dot_y,
-		                           *BG_Item.revers(prev_x, prev_y),
-		                           *BG_Item.revers(     x,      y)))
+		                           *self.getRevers(prev_x, prev_y),
+		                           *self.getRevers(     x,      y)))
 
 	def setProp(self, *prop):
-		self._prop = prop
-		BG_Item.setProp(self._prop)
+		for i in flatten(prop):
+			self._props.set(i)
+			i.setSize(self._area_size)
 
 	def delProp(self, *prop):
 		for i in flatten(prop):
-			BG_Item.delProp(i)
+			self._props.delete(i)
 
 	def setRooler(self, *rooler):
 		self._rooler = rooler
@@ -644,10 +690,16 @@ class BG_Decart(BG_HtmlCanvas):
 			b = i.getSize()
 			self.__min_max(*b)
 
-		BG_Item.base(self._x_min, self._y_min, self._x_max, self._y_max)
+		self._area_size.set(self._x_min,
+		                    self._y_min,
+		                    self._x_max,
+		                    self._y_max)
 
 		self.clear()
 		for i in flatten(self._rooler, funcs):
+			i.setProperty(self._props)
+			i.setSize(self._area_size)
+
 			i.draw(self, self._x_min,
 			             self._y_min,
 			             self._x_max,
@@ -659,7 +711,7 @@ class BG_Decart(BG_HtmlCanvas):
 		        self._y_max)
 
 	def dot(self, x, y):
-		a, b = BG_Item.point(x, y)
+		a, b = self.getPoint(x, y)
 		return (self.X(a),
 		        self.Y(b))
 #class BG_Decart(BG_HtmlCanvas):
