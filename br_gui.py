@@ -94,17 +94,20 @@ class BG_CheckBox(BG_Html):
 		self._data.checked = state
 
 class BG_Range(BG_Html):
-	def __init__(self, callback):
+	def __init__(self):
 		self._data = html.INPUT(type  = 'range',
 		                        style = 'transform: rotate(-90deg); transform-origin: 0px 0px;',
 		                        min   = '-50',
 		                        max   = '50',
 		                        value = '0')
 		def hook(event):
-			return callback(float(event.target.value) / 100)
+			return self._callback(float(event.target.value) / 100)
 #
 		self._data.bind('change', hook)
 #		self._data.bind('input''  hook)
+
+	def setCallback(self, callback):
+		self._callback = callback
 
 	def getState(self):
 		return float(self._data.value) / 100
