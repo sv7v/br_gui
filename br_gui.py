@@ -636,8 +636,9 @@ class BG_Decart(BG_HtmlCanvas):
 		self._x_max = None
 		self._y_max = None
 
-		self._funcs = []
-		self._props = BG_PropertyDict()
+		self._funcs  = []
+		self._props  = BG_PropertyDict()
+		self._rooler = []
 		self._area_size = BG_ItemSize(None, None, None, None)
 
 	def _getItem(self):
