@@ -581,6 +581,7 @@ class BG_LeftRightBorder(BG_Tool):
 
 	def get(self):
 		return self._left, self._right
+#class BG_LeftRightBorder(BG_Tool):
 
 class BG_TableFunc(BG_Item):
 	def __init__(self, xy):
