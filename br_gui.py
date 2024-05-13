@@ -481,14 +481,15 @@ class BG_Frame(BG_Item):
 		canvas.line(self.point(x_max, y_max), self.point(x_max, y_min))
 		canvas.line(self.point(x_max, y_min), self.point(x_min, y_min))
 
-		for x in BG_Frame.dashes(x_min, x_max):
+		for x,i in zip(BG_Frame.dashes(x_min, x_max),
+		             count()):
 			a = self.point(x, y_max)
 			b = (a[0], a[1]+0.02)
 			c = self.point(x, y_min)
 			d = (c[0], c[1]-0.02)
 			canvas.line(a, b)          # верхняя
 			canvas.line(c, d)          # нижняя
-			if x%5 == 0:
+			if i%2 == 0:
 				canvas.text(b, BG_CanvasBase.BOTTOM,  x)
 				canvas.text(d, BG_CanvasBase.TOP,     x)
 
