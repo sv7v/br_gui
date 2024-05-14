@@ -297,36 +297,53 @@ class BG_Property(BG_RectangleArea):
 	def revers(self, x, y):
 		return self.rev_x(x), self.rev_y(y)
 
+	def convert_x(self, x): return self.conv_x(x)
+	def convert_y(self, y):
+		return self.conv_y(y)
+
+	def revers(self, x): return self.rev_x(x)
+	def revers(self, y): return self.rev_y(y)
+
 	def get_x_min(self): return self._size.get_x_min()
 	def get_y_min(self): return self._size.get_y_min()
 	def get_x_max(self): return self._size.get_x_max()
 	def get_y_max(self): return self._size.get_y_max()
 
 class BG_Liner(BG_Property):
-	# min max
-	#  0   1
-	def __init__(self):
-		def linear(mi, a, ma):    return (a-mi)/(ma-mi)
-
-		self.conv_x = lambda a: linear(self.get_x_min(), a, self.get_x_max())
-		self.conv_y = lambda a: linear(self.get_y_min(), a, self.get_y_max())
-
-		def liner_rev(mi, a, ma):
-			return mi + a*(ma-mi)
-
-		self.rev_x  = lambda a: liner_rev(self.get_x_min(), a, self.get_x_max())
-		self.rev_y  = lambda a: liner_rev(self.get_y_min(), a, self.get_y_max())
-
-class BG_LogY(BG_Liner):
 	def __init__(self):
 		super().__init__()
-		def l(mi, y, ma):     return log(y/mi)/log(ma/mi)
+	def conv(self, mi, a, ma): return (a-mi)/(ma-mi)
+	def rev (self, mi, a, ma): return mi + a*(ma-mi)
 
-		self.conv_y = lambda y: l    (self.get_y_min(), y, self.get_y_max())
+class BG_Log(BG_Property):
+	def __init__(self):
+		super().__init__()
+	def conv(self, mi, y, ma): return log(y/mi)/log(ma/mi)
+	def rev (self, mi, y, ma): return mi * exp(y*log(ma/mi))
 
-		def l_rev(mi, y, ma): return mi * exp(y*log(ma/mi))
+class BG_LinerX(BG_Liner):
+	def __init__(self):
+		super().__init__()
+		self.conv_x = lambda a: self.conv(self.get_x_min(), a, self.get_x_max())
+		self.rev_x  = lambda a: self.rev (self.get_x_min(), a, self.get_x_max())
 
-		self.rev_y = lambda y:  l_rev(self.get_y_min(), y, self.get_y_max())
+class BG_LinerY(BG_Liner):
+	def __init__(self):
+		super().__init__()
+		self.conv_y = lambda a: self.conv(self.get_y_min(), a, self.get_y_max())
+		self.rev_y  = lambda a: self.rev (self.get_y_min(), a, self.get_y_max())
+
+class BG_LogX(BG_Log):
+	def __init__(self):
+		super().__init__()
+		self.conv_x = lambda a: self.conv(self.get_x_min(), a, self.get_x_max())
+		self.rev_x  = lambda a: self.rev (self.get_x_min(), a, self.get_x_max())
+
+class BG_LogY(BG_Log):
+	def __init__(self):
+		super().__init__()
+		self.conv_y = lambda a: self.conv(self.get_y_min(), a, self.get_y_max())
+		self.rev_y  = lambda a: self.rev (self.get_y_min(), a, self.get_y_max())
 
 class BG_Affinis(BG_Property):
 	def __init__(self, tg=0):
@@ -380,9 +397,10 @@ class BG_PropertyDict:
 	def set(self, prop):
 		for i in flatten(prop):
 			self._data[type(i)] = i
-
-			if type(i) == BG_Liner: self.__delitem__(BG_LogY())
-			if type(i) == BG_LogY:  self.__delitem__(BG_Liner())
+			if type(i) == BG_LinerX: self.__delitem__(BG_LogX())
+			if type(i) == BG_LinerY: self.__delitem__(BG_LogY())
+			if type(i) == BG_LogX:   self.__delitem__(BG_LinerX())
+			if type(i) == BG_LogY:   self.__delitem__(BG_LinerY())
 
 	def __getitem__(self, key):
 		return self._data[key]
@@ -404,7 +422,7 @@ class BG_Item(BG_RectangleArea):
 #		соответствующие 'рамке' графика.'''
 #	def getSize(self):
 #		'''Минимальные и максимальные координаты для этого объекта'''
-	def dashes(mi, ma):
+	def _dashes_line(mi, ma):
 		if mi == None or ma == None:
 			return None, ()
 		a = (ma - mi)/10
@@ -429,17 +447,27 @@ class BG_Item(BG_RectangleArea):
 		b = ceil(log(ma, 10))
 		return map(lambda i: 10**i, range(a, b))
 
+	def dashes_xy(self, typ, mi, ma):
+		if not typ in self._prop:
+			return BG_Item._dashes_line(mi, ma)
+		else:
+			return BG_Item._dashes_log(mi, ma)
+
+	def dashes_x(self, mi, ma):
+		return self.dashes_xy(BG_LogX, mi, ma)
+
 	def dashes_y(self, mi, ma):
 		if not BG_LogY in self._prop:
-			return BG_Item.dashes(mi, ma)
+			return BG_Item._dashes(mi, ma)
 		else:
 			return BG_Item._dashes_log(mi, ma)
 
 	def point(self, x, y):
-		try:
-			x, y = self._prop[BG_LogY].convert(x, y)
-		except KeyError:
-			x, y = BG_Liner().convert(x, y)
+		try:             x = self._prop[BG_LogX].convert_x(x)
+		except KeyError: x = self._prop[BG_LinerX].convert_x(x)
+
+		try:             y = self._prop[BG_LogY].convert_y(y)
+		except KeyError: y = self._prop[BG_LinerY].convert_y(y)
 
 		x, y = self._prop[BG_Affinis].convert(x, y)
 		return BG_Compress().convert(x, y)
@@ -481,8 +509,8 @@ class BG_Frame(BG_Item):
 		canvas.line(self.point(x_max, y_max), self.point(x_max, y_min))
 		canvas.line(self.point(x_max, y_min), self.point(x_min, y_min))
 
-		for x,i in zip(BG_Frame.dashes(x_min, x_max),
-		             count()):
+		for x,i in zip(self.dashes_x(x_min, x_max),
+		               count()):
 			a = self.point(x, y_max)
 			b = (a[0], a[1]+0.02)
 			c = self.point(x, y_min)
@@ -506,7 +534,7 @@ class BG_Frame(BG_Item):
 
 class BG_Grid(BG_Item):
 	def draw(self, canvas, x_min, y_min, x_max, y_max):
-		for x in BG_Frame.dashes(x_min, x_max):
+		for x in self.dashes_x(x_min, x_max):
 			a = self.point(x, y_min)
 			b = self.point(x, y_max)
 			canvas.line(a, b)
