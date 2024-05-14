@@ -292,17 +292,17 @@ class BG_RectangleArea:
 
 class BG_Property(BG_RectangleArea):
 	def convert(self, x, y):
-		return self.conv_x(x), self.conv_y(y)
-
+		return (self.convert_x(x),
+		        self.convert_y(y))
 	def revers(self, x, y):
-		return self.rev_x(x), self.rev_y(y)
+		return (self.revers_x(x),
+		        self.revers_y(y))
 
 	def convert_x(self, x): return self.conv_x(x)
-	def convert_y(self, y):
-		return self.conv_y(y)
+	def convert_y(self, y):	return self.conv_y(y)
 
-	def revers(self, x): return self.rev_x(x)
-	def revers(self, y): return self.rev_y(y)
+	def revers_x(self, x): return self.rev_x(x)
+	def revers_y(self, y): return self.rev_y(y)
 
 	def get_x_min(self): return self._size.get_x_min()
 	def get_y_min(self): return self._size.get_y_min()
@@ -476,10 +476,13 @@ class BG_Item(BG_RectangleArea):
 		y = 1 - y
 		x, y = BG_Compress().revers(x, y)
 		x, y = self._prop[BG_Affinis].revers(x, y)
-		try:
-			x, y = self._prop[BG_LogY].revers(x, y)
-		except KeyError:
-			x, y = BG_Liner().revers(x, y)
+
+		try:             x = self._prop[BG_LogX].revers_x(x)
+		except KeyError: x = self._prop[BG_LinerX].revers_x(x)
+
+		try:             y = self._prop[BG_LogY].revers_y(y)
+		except KeyError: y = self._prop[BG_LinerY].revers_y(x, y)
+
 		return x, y
 
 	def setProperty(self, prop):
